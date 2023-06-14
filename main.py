@@ -4,13 +4,25 @@ from telebot import types
 
 bot = telebot.TeleBot("6113316955:AAH9zbWFe1lzDPyj6H57MMoJ9Y0B_w34S_Y")
 
+
+
+
 @bot.message_handler(commands=["start"])
 def main(message):
-    bot.send_message(message.chat.id, f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help")
+    markup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton("Помощь по командам")
+    markup.row(btn1)
+    bot.send_message(message.chat.id, f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help",reply_markup=markup)
+    bot.register_next_step_handler(message, on_click_help)
+
+def on_click_help(message):
+    if message.text == "Помощь по командам":
+        help1(message)
+
 
 
 @bot.message_handler(commands=["help"])
-def main1(message):
+def help1(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('Перейти на сайт', url="https://ober1.st8.ru/"))
     bot.send_message(message.chat.id, "<b>Information:</b>\n/start - Старт бота\n/id - Узнать ваш id в telegram\n/website - Открыть сайт\nТак-же ты можешь отправить мне фото!",
