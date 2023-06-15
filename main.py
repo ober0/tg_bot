@@ -7,6 +7,18 @@ from telebot import types
 
 bot = telebot.TeleBot("6113316955:AAH9zbWFe1lzDPyj6H57MMoJ9Y0B_w34S_Y")
 
+example_text = None
+example_id = None
+
+@bot.message_handler(commands=['example'])
+def example(message):
+    global example_text
+    global example_id
+    bot.send_message(message.chat.id, 'Отправьте ваш пример:')
+    example_text = True
+    example_id = message.message_id
+
+
 
 @bot.message_handler(commands=["audio"])
 def audio(message):
@@ -74,13 +86,24 @@ def get_photo(message):
 
 @bot.message_handler()
 def info(message):
+    global example_text
+    global example_id
+
     print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) отправил сообщение id:{message.message_id-1} text:{message.text}')
     if message.text.lower() == "привет":
         bot.send_message(message.chat.id, "Здарова")
     elif message.text == "Помощь по командам":
         help1(message)
     else:
-        bot.send_message(message.chat.id, 'Такой команды нет. /help - чтобы узнать команды')
+        if example_text == True and message.message_id-2 == example_id:
+            try:
+                bot.send_message(message.chat.id, eval(str(message.text)))
+                example_text = False
+
+            except:
+                bot.send_message(message.chat.id, "Произошла ошибка. Скорее всего вы ввели не цифры, попробуйте еще раз")
+        else:
+            bot.send_message(message.chat.id, 'Такой команды нет. /help - чтобы узнать команды')
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback(callback):
