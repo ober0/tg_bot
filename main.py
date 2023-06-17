@@ -4,9 +4,9 @@ from datetime import datetime
 import telebot
 import webbrowser
 from telebot import types
+import sqlite3
 
-
-bot = telebot.TeleBot("6113316955:AAH9zbWFe1lzDPyj6H57MMoJ9Y0B_w34S_Y")
+bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 
 example_text = None
@@ -45,7 +45,7 @@ def example(message):
 
 @bot.message_handler(commands=["audio"])
 def audio(message):
-    file = open('voice.mp3', 'rb')
+    file = open('audio/voice.mp3', 'rb')
     bot.send_audio(message.chat.id, file)
     print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку audio')
 
@@ -81,7 +81,7 @@ def send_photo(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete_last')
     markup.row(btn1)
-    file = open(f'flower{random.randint(1,3)}.png', 'rb')
+    file = open(f'img/flower{random.randint(1,3)}.png', 'rb')
     bot.send_photo(message.chat.id, file, reply_markup=markup)
     print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку фото')
 
@@ -123,7 +123,7 @@ def info(message):
         help1(message)
     else:
         if feedback_enable == True and feedback_id+2 == message.id:
-            print("\033[31m{}".format(f'\n{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке:)\ntext:{message.text}'))
+            print("\033[31m{}".format(f'\n{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке:\ntext:{message.text}'))
             feedback_enable = False
             print('\033[0m{}'.format(''))
         elif example_text == True and message.message_id-2 == example_id:
