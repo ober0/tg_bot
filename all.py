@@ -8,7 +8,7 @@ import sqlite3
 import requests
 import json
 from translate import Translator
-
+import sys
 
 translator = Translator(to_lang="Russian")
 
@@ -20,7 +20,7 @@ user_city = None
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
-admins = [['ruslan','111']]
+
 
 login = None
 id = None
@@ -187,6 +187,40 @@ def auth_user(message):
     except:
         pass
 
+
+
+
+@bot.message_handler(commands=['DeleteMsg'])
+def delete_msg(message):
+    if user_is_admin:
+        bot.send_message(message.chat.id, 'Кол-во сообщений:')
+        bot.register_next_step_handler(message, delete_colvo_message)
+        return
+    bot.send_message(message.chat.id, 'У вас не достаточно прав')
+
+def delete_colvo_message(message):
+    x = 0
+    if message.text == 'all':
+        while True:
+            try:
+                bot.delete_message(message.chat.id, message.message_id-x)
+                print(x)
+                x+=1
+            except:
+                print('error')
+                pass
+
+    else:
+        try:
+            count = int(message.text)
+            for i in range(count):
+                bot.delete_message(message.chat.id, message.message_id - x)
+                print(x)
+                x += 1
+        except:
+            bot.delete_message(message.chat.id, message.message_id)
+            bot.delete_message(message.chat.id, message.message_id-1)
+            bot.delete_message(message.chat.id, message.message_id-2)
 def login_auth(message):
     global auth_process
     global user_input_login
@@ -228,13 +262,22 @@ def password_auth(message):
                 account = i[0]
                 cur.close()
                 conn.close()
-                for k in admins:
-                    if str(k[0]) == str(i[1]) and str(k[1]) == str(i[2]):
-                        bot.send_message(message.chat.id, f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+                conn = sqlite3.connect('adm.sql')
+                cur = conn.cursor()
+                cur.execute('SELECT * FROM admins')
+                users = cur.fetchall()
+                for j in users:
+                    if str(j[1]) == str(i[1]) and str(j[2]) == str(i[2]):
+                        bot.send_message(message.chat.id,
+                                         f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
                         user_is_admin = True
                         check_info_adm(user_is_admin)
                         auth_process = False
+                        cur.close()
+                        conn.close()
                         return
+                cur.close()
+                conn.close()
                 bot.send_message(message.chat.id, f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - пользователь\n/leave - выйти с аккаунта')
                 auth_process = False
                 return
@@ -264,6 +307,7 @@ def check_info_adm(user):
 /status - Статус
 /weather - Узнать погоду
 /weather_users_info - Список городов (для администрации)
+/DeleteMsg - удалить сообщения (для администрации) (багает)
 Так-же ты можешь отправить мне фото!
 '''
     else:
