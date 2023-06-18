@@ -5,6 +5,18 @@ import telebot
 import webbrowser
 from telebot import types
 import sqlite3
+import requests
+import json
+from translate import Translator
+
+
+translator = Translator(to_lang="Russian")
+
+
+TOKEN = "a9f80aed3781da89307af663c698d95f"
+weather_get = False
+weather_get_id = None
+user_city = None
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
@@ -24,8 +36,10 @@ example_text = None
 example_id = None
 feedback_enable = None
 
-INFORMATION = '''
-<b>Information:</b>
+
+
+information = '''
+<b>information:</b>
 /start - Старт бота
 /help - Помощь
 /id - Узнать ваш id в telegram
@@ -36,9 +50,9 @@ INFORMATION = '''
 /feedback - связь с разработчиком
 /auth - Вход в аккаунт
 /reg - Регистрация
-/users - Список пользователей (для администрации)
 /leave - Выход с аккаунта
 /status - Статус
+/weather - Узнать погоду
 Так-же ты можешь отправить мне фото!
 '''
 
@@ -48,8 +62,30 @@ def leave(message):
     global user_is_admin
     account = None
     user_is_admin = None
+    check_info_adm(user_is_admin)
     bot.send_message(message.chat.id,'Выход успешен!')
     print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Выполнил выход из аккаунта')
+
+
+@bot.message_handler(commands=['weather_users_info'])
+def users(message):
+    conn = sqlite3.connect('weather.sql')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users')
+    weather = cur.fetchall()
+    info = ''
+    for i in weather:
+        info += f'id: {i[0]}, Город: {i[1]}\n'
+    cur.close()
+    conn.close()
+    if user_is_admin:
+        bot.send_message(message.chat.id, info)
+        print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список городов пользователей')
+
+    else:
+        bot.send_message(message.chat.id, 'У вас не достаточно прав')
+        print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) не смог посмотреть список городов пользователей из-за отсутствия прав администратора')
+
 
 @bot.message_handler(commands=['users'])
 def users(message):
@@ -84,6 +120,61 @@ def reg_user(message):
     conn.close()
     bot.send_message(message.chat.id, 'привет, сейчас тебя зарегистрируем, придумайте логин')
     bot.register_next_step_handler(message, user_login)
+
+@bot.message_handler(commands=['weather'])
+def weather(message):
+    print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) ввел команду weather')
+    global weather_get
+    global user_city
+    global weather_get_id
+    conn = sqlite3.connect('weather.sql')
+    cur = conn.cursor()
+    id1 = message.from_user.id
+    cur.execute('CREATE TABLE IF NOT EXISTS users (id int(15), city varchar(50))')
+    conn.commit()
+    cur.execute('SELECT * FROM users')
+    data = cur.fetchall()
+    res = []
+    print(data)
+    for i in data:
+        res.insert(0, i)
+    for i in res:
+        if id1 == i[0]:
+            if i[1] != None:
+                user_city = i[1]
+                weather_get = True
+                weather_get_id = message.message_id
+                res = requests.get(
+                    f"https://api.openweathermap.org/data/2.5/weather?q={user_city}&appid={TOKEN}&units=metric")
+                try:
+                    res = json.loads(res.text)
+                    print(res)
+                    markup1 = types.InlineKeyboardMarkup()
+                    btn_yes = types.InlineKeyboardButton('Да', callback_data='Yes_izm')
+                    btn_no = types.InlineKeyboardButton('Нет', callback_data='No')
+                    markup1.add(btn_no, btn_yes)
+                    bot.send_message(message.chat.id, f'Погода в {user_city}: {round(int(res["main"]["temp"]))}°C, {translator.translate(res["weather"][0]["description"])}\nВетер: {res["wind"]["speed"]}м/с\nВлажность: {res["main"]["humidity"]}% ',
+                                     )
+                    bot.send_message(message.chat.id, 'Изменить город?', reply_markup=markup1)
+                    weather_get = False
+                except:
+                    bot.send_message(message.chat.id,
+                                     'Город указан не верно. Если вы уверенны, что город введен верно напишите /feedback')
+                    weather_get = False
+                cur.close()
+                conn.close()
+        
+                return
+
+    bot.send_message(message.chat.id, 'Введите свой город:')
+    weather_get = True
+    weather_get_id = message.message_id
+
+    cur.close()
+    conn.close()
+
+
+
 
 
 @bot.message_handler(commands=['auth'])
@@ -141,6 +232,7 @@ def password_auth(message):
                     if str(k[0]) == str(i[1]) and str(k[1]) == str(i[2]):
                         bot.send_message(message.chat.id, f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
                         user_is_admin = True
+                        check_info_adm(user_is_admin)
                         auth_process = False
                         return
                 bot.send_message(message.chat.id, f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - пользователь\n/leave - выйти с аккаунта')
@@ -152,7 +244,46 @@ def password_auth(message):
     conn.close()
 
 
-
+def check_info_adm(user):
+    global information
+    if user == True:
+        information = '''
+<b>information:</b>
+/start - Старт бота
+/help - Помощь
+/id - Узнать ваш id в telegram
+/website - Открыть сайт
+/photo - Я отправлю вам фото
+/audio - Я отправлю вам аудио
+/example - Решить пример
+/feedback - связь с разработчиком
+/auth - Вход в аккаунт
+/reg - Регистрация
+/users - Список пользователей (для администрации)
+/leave - Выход с аккаунта
+/status - Статус
+/weather - Узнать погоду
+/weather_users_info - Список городов (для администрации)
+Так-же ты можешь отправить мне фото!
+'''
+    else:
+        information = '''
+<b>information:</b>
+/start - Старт бота
+/help - Помощь
+/id - Узнать ваш id в telegram
+/website - Открыть сайт
+/photo - Я отправлю вам фото
+/audio - Я отправлю вам аудио
+/example - Решить пример
+/feedback - связь с разработчиком
+/auth - Вход в аккаунт
+/reg - Регистрация
+/leave - Выход с аккаунта
+/status - Статус
+/weather - Узнать погоду
+Так-же ты можешь отправить мне фото!
+'''
 
 
 
@@ -248,7 +379,7 @@ def on_click_help(message):
 def help1(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('Перейти на сайт', url="https://ober1.st8.ru/"))
-    bot.send_message(message.chat.id, INFORMATION, parse_mode='html', reply_markup=markup)
+    bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
     print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку help')
 
 
@@ -298,8 +429,30 @@ def info(message):
     global example_id
     global feedback_enable
     global feedback_id
+    global weather_get
+    global user_city
+    if message.message_id - 2 == weather_get_id:
+        user_city = message.text.strip().lower()
+        res = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={user_city}&appid={TOKEN}&units=metric")
 
-    if message.text.lower() == "привет":
+        try:
+            data = json.loads(res.text)
+            markup1 = types.InlineKeyboardMarkup()
+            btn_yes = types.InlineKeyboardButton('Да', callback_data='Yes')
+            btn_no = types.InlineKeyboardButton('Нет', callback_data='No')
+            markup1.add(btn_no, btn_yes)
+            bot.send_message(message.chat.id, f'Погода в {user_city}: {round(int(data["main"]["temp"]))}°C\n')
+            bot.send_message(message.chat.id, 'Сохранить город?', reply_markup=markup1)
+            weather_get = False
+            print(
+                f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Узнал погоду')
+        except:
+            bot.send_message(message.chat.id, 'Город указан не верно. Если вы уверенны, что город введен верно напишите /feedback')
+            weather_get = False
+            print(
+                f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Узнал погоду')
+            
+    elif message.text.lower() == "привет":
         bot.send_message(message.chat.id, "Здарова")
     elif message.text == "Помощь по командам":
         help1(message)
@@ -319,7 +472,7 @@ def info(message):
                 bot.send_message(message.chat.id, eval(str(message.text)), reply_markup=markup)
                 return
             except:
-                bot.send_message(message.chat.id, "Произошла ошибка. Скорее всего вы ввели не цифры, попробуйте еще раз  /example")
+                bot.send_message(message.chat.id, "Повторите ввод.")
         else:
             bot.send_message(message.chat.id, 'Такой команды нет. /help - чтобы узнать команды')
         print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) отправил сообщение id:{message.message_id - 1} text:{message.text}')
@@ -357,6 +510,36 @@ def callback(callback):
         feedback_id = callback.message.id
         bot.send_message(callback.message.chat.id, "Введите сообщение:")
 
+    elif callback.data == 'Yes':
+        conn = sqlite3.connect('weather.sql')
+        cur = conn.cursor()
+        id1 = callback.message.chat.id
+        cur.execute(f'INSERT INTO users (id, city) VALUES ("%s", "%s")' % (id1, user_city))
+        conn.commit()
+        cur.close()
+        conn.close()
+    elif callback.data == 'No':
+        pass
+    elif callback.data == 'Yes_izm':
+        bot.send_message(callback.message.chat.id, 'Введите новый город')
+        bot.register_next_step_handler(callback.message, edit_city)
+
+def edit_city(message):
+    res = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={message.text}&appid={TOKEN}&units=metric")
+    if res.status_code == 200:
+        conn = sqlite3.connect('weather.sql')
+        cur = conn.cursor()
+        id1 = message.chat.id
+        cur.execute(f'INSERT INTO users (id, city) VALUES ("%s", "%s")' % (id1, message.text))
+        conn.commit()
+        cur.close()
+        conn.close()
+        bot.send_message(message.chat.id, 'Успешно!')
+    else:
+        bot.send_message(message.chat.id, 'Не правильный город')
+    print(
+        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) изменил город')
+    
 @bot.callback_query_handler(func=lambda call: True)
 def callback2(call):
     conn = sqlite3.connect('ober.sql')
