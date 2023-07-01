@@ -26,6 +26,50 @@ def TextToAudio(message):
     bot.send_message(message.chat.id, 'Введите текст для преобразования:')
     bot.register_next_step_handler(message, TextToAudio_text_input)
 
+@bot.message_handler(commands=['reports'])
+def check_reports(message):
+    global report_next
+    if not user_is_admin:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+        return
+    report_check(message)
+
+def report_check(message):
+    try:
+        with open('../sql/new_reports.txt', 'r', encoding='utf-8')as reports:
+            reports_list = reports.readlines()
+            i = reports_list[0]
+            i = i.replace('\n', '')
+            file_txt = open(f'{i}/report.txt', encoding='utf-8')
+            file_mp3 = open(f'{i}/report.mp3', 'rb')
+            bot.send_audio(message.chat.id, file_mp3)
+            bot.send_document(message.chat.id, file_txt)
+            from_user_report = i[10:]
+            from_user_report = from_user_report[::-1]
+            from_user_report = from_user_report[(from_user_report.find('/')+1):]
+            from_user_report = from_user_report[::-1]
+            bot.send_message(from_user_report,'Ваш репорт был доставлен разработчикам, мы уже думаем над решением проблемы. С уважением, администрация.')
+            markup = types.InlineKeyboardMarkup()
+            btn1 = types.InlineKeyboardButton('Да', callback_data='report_yes')
+            btn2 = types.InlineKeyboardButton('Нет', callback_data='report_no')
+            markup.row(btn1, btn2)
+            bot.send_message(message.chat.id, 'Репорт просмотрен, открыть следующий?', reply_markup=markup)
+            file_txt.close()
+            file_mp3.close()
+            shutil.rmtree(i)
+
+        with open('../sql/new_reports.txt', 'w', encoding='utf-8')as reports2:
+            reports_list1 = []
+            for i in reports_list:
+                i = i.replace('\n', '')
+                reports_list1.append(i)
+            reports_list1.pop(0)
+            for i in reports_list1:
+                reports2.write(f'{i}\n')
+
+    except:
+        bot.send_message(message.chat.id, 'Репортов нет.')
+
 def TextToAudio_text_input(message):
     global audio
     global language
@@ -50,7 +94,7 @@ def TextToAudio_text_input(message):
         file = open(audio, 'rb')
         bot.send_audio(message.chat.id, file, title='Ваше сообщение')
         bot.send_message(message.chat.id, f'Язык сообщения: {language}\nЕсли язык распознан не правильно нажмите на кнопку ниже:', reply_markup=markup)
-
+        file.close()
     except:
         bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!')
         return
@@ -60,8 +104,12 @@ def bug_report(error, chat_id, path):
     with open(f'../{path}/report.txt', 'w', encoding='utf-8') as file1:
         file1.write(f'Текст: {text_for_report}\nЯзык: {language}')
     with open('../sql/new_reports.txt', 'a', encoding='utf-8')as file2:
-        file2.write(f'../{path}/report.txt\n')
-    shutil.move(f'{audio}', f'../{path}')
+        file2.write(f'../{path}\n')
+    try:
+        shutil.move(f'{audio}', f'../{path}')
+        os.rename(f'../errors/{chat_id}/error{error}/audio_for_{chat_id}.mp3',f'../errors/{chat_id}/error{error}/report.mp3')
+    except:
+        pass
 
 @bot.message_handler(commands=['leave'])
 def leave(message):
@@ -525,6 +573,7 @@ def info(message):
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback(callback):
+    global report_next
     global example_text
     global example_id
     global feedback_enable
@@ -539,6 +588,14 @@ def callback(callback):
 
     elif callback.data == 'edit':
         bot.edit_message_text("Какое красивое фото!", callback.message.chat.id, callback.message.message_id)
+
+    elif callback.data == 'report_yes':
+        report_next = True
+        report_check(callback.message)
+
+    elif callback.data == 'report_no':
+
+        report_next = False
 
     elif callback.data == 'Recognition_not_correct':
         try:
