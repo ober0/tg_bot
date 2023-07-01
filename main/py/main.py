@@ -19,7 +19,28 @@ translator = Translator(to_lang="Russian")
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
+@bot.message_handler(commands=['Send_Message'])
+def Send_Message(message):
+    if not user_is_admin:
+        bot.send_message(message.chat.id, 'Недостаточно прав')
+        return
+    bot.send_message(message.chat.id, 'Введите id адресанта')
 
+    bot.register_next_step_handler(message, Send_Message_step1)
+
+def Send_Message_step1(message):
+    global user_adress
+    user_adress = message.text
+    bot.send_message(message.chat.id, 'Введите сообщение')
+    bot.register_next_step_handler(message, Send_Message_step2)
+def Send_Message_step2(message):
+    global user_adress
+    message_to_user = message.text
+    try:
+        bot.send_message(user_adress, message_to_user)
+    except:
+        pass
+    bot.send_message(message.chat.id, 'Сообщение отправлено')
 
 @bot.message_handler(commands=['TextToAudio'])
 def TextToAudio(message):
@@ -102,7 +123,7 @@ def TextToAudio_text_input(message):
 
 def bug_report(error, chat_id, path):
     with open(f'../{path}/report.txt', 'w', encoding='utf-8') as file1:
-        file1.write(f'Текст: {text_for_report}\nЯзык: {language}')
+        file1.write(f'Текст: {text_for_report}\nЯзык: {language}\nid: {chat_id}')
     with open('../sql/new_reports.txt', 'a', encoding='utf-8')as file2:
         file2.write(f'../{path}\n')
     try:
