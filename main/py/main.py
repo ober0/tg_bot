@@ -22,7 +22,7 @@ bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 @bot.message_handler(commands=['Send_Message'])
 def Send_Message(message):
     if not user_is_admin:
-        bot.send_message(message.chat.id, 'Недостаточно прав')
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
         return
     bot.send_message(message.chat.id, 'Введите id адресанта')
 
@@ -42,7 +42,7 @@ def Send_Message_step2(message):
         pass
     bot.send_message(message.chat.id, 'Сообщение отправлено')
 
-@bot.message_handler(commands=['TextToAudio'])
+@bot.message_handler(commands=['text_to_audio'])
 def TextToAudio(message):
     bot.send_message(message.chat.id, 'Введите текст для преобразования:')
     bot.register_next_step_handler(message, TextToAudio_text_input)
@@ -162,7 +162,7 @@ def users(message):
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список городов пользователей')
 
     else:
-        bot.send_message(message.chat.id, 'У вас не достаточно прав')
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
         print(
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) не смог посмотреть список городов пользователей из-за отсутствия прав администратора')
 
@@ -184,7 +184,7 @@ def users(message):
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список учетных записей')
 
     else:
-        bot.send_message(message.chat.id, 'У вас не достаточно прав')
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
         print(
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) не смог посмотреть учетные записи из-за отсутствия прав администратора')
 
@@ -275,7 +275,7 @@ def delete_msg(message):
         bot.send_message(message.chat.id, 'Кол-во сообщений:')
         bot.register_next_step_handler(message, delete_colvo_message)
         return
-    bot.send_message(message.chat.id, 'У вас не достаточно прав')
+    bot.send_message(message.chat.id, 'У вас недостаточно прав!')
 
 
 def delete_colvo_message(message):
@@ -697,7 +697,7 @@ def callback2(call):
     if user_is_admin:
         bot.send_message(call.message.chat.id, info)
     else:
-        bot.send_message(call.message.chat.id, 'У вас не достаточно прав')
+        bot.send_message(call.message.chat.id, 'У вас недостаточно прав!')
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
