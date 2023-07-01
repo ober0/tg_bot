@@ -49,13 +49,53 @@ def TextToAudio(message):
 
 @bot.message_handler(commands=['reports'])
 def check_reports(message):
-    global report_next
-    if not user_is_admin:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        return
-    report_check(message)
+    # if not user_is_admin:
+    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+    #     return
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
+    btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
+    markup.row(btn1,btn2)
+    bot.send_message(message.chat.id, '<b>Выберите категорию:</b>',reply_markup=markup, parse_mode='html')
 
-def report_check(message):
+
+def report_check_feedback(message):
+    global user_id_feedback
+    try:
+        with open('../sql/feedback.txt', 'r', encoding='utf-8') as reports:
+            reports_list = reports.readlines()
+            i = reports_list[0]
+            i = i.replace('\n', '')
+            user_id_feedback = (i[i.find("(")+4:i.find(')')])
+            bot.send_message(message.chat.id, f'Сообщение от: {(i[12:i.find(")")+1])}')
+            bot.send_message(message.chat.id, f'Текст: {i[i.find("text")+5:]}')
+            bot.send_message(message.chat.id, f'Ответьте пользователю:')
+            bot.register_next_step_handler(message, report_check_feedback_step2)
+
+
+
+
+        with open('../sql/feedback.txt', 'w', encoding='utf-8') as reports2:
+            reports_list1 = []
+            for i in reports_list:
+                i = i.replace('\n', '')
+                reports_list1.append(i)
+            reports_list1.pop(0)
+            for i in reports_list1:
+                reports2.write(f'{i}\n')
+    except:
+        bot.send_message(message.chat.id, 'Репортов нет.')
+
+def report_check_feedback_step2(message):
+    bot.send_message(user_id_feedback, f'<b>Ответ администратора на ваше обращение:</b> {message.text}\nПодробнее - discord - Ober11#7777      tg - @Oberrrr', parse_mode='html')
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton('Да', callback_data='report_yes1')
+    btn2 = types.InlineKeyboardButton('Нет', callback_data='report_no1')
+    markup.row(btn1, btn2)
+    bot.send_message(message.chat.id, 'Репорт просмотрен, открыть следующий?', reply_markup=markup)
+
+
+def report_check_audio(message):
     try:
         with open('../sql/new_reports.txt', 'r', encoding='utf-8')as reports:
             reports_list = reports.readlines()
@@ -569,11 +609,11 @@ def info(message):
         help1(message)
     else:
         if feedback_enable == True and feedback_id + 2 == message.id:
-            print("\033[31m{}".format(
-                f'\n{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке:\ntext:{message.text}'))
+            with open('../sql/feedback.txt', 'a', encoding='utf-8')as file:
+                file.write(f'Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке. text:{message.text}\n')
             feedback_enable = False
-            bot.send_message(message.chat.id, 'Обращение доставлено')
-            print('\033[0m{}'.format(''))
+            bot.send_message(message.chat.id, 'Обращение отправлено')
+
 
         elif example_text == True and message.message_id - 2 == example_id:
             try:
@@ -594,7 +634,6 @@ def info(message):
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback(callback):
-    global report_next
     global example_text
     global example_id
     global feedback_enable
@@ -611,13 +650,15 @@ def callback(callback):
         bot.edit_message_text("Какое красивое фото!", callback.message.chat.id, callback.message.message_id)
 
     elif callback.data == 'report_yes':
-        report_next = True
-        report_check(callback.message)
+        report_check_audio(callback.message)
 
     elif callback.data == 'report_no':
+        pass
+    elif callback.data == 'report_yes1':
+        report_check_feedback(callback.message)
 
-        report_next = False
-
+    elif callback.data == 'report_no1':
+        pass
     elif callback.data == 'Recognition_not_correct':
         try:
             os.mkdir(f'../errors/{str(callback.message.chat.id)}')
@@ -665,7 +706,11 @@ def callback(callback):
         bot.send_message(callback.message.chat.id, 'Введите новый город')
         bot.register_next_step_handler(callback.message, edit_city)
 
+    elif callback.data == 'feedback_type':
+        report_check_feedback(callback.message)
 
+    elif callback.data == 'text_to_audio_type':
+        report_check_audio(callback.message)
 def edit_city(message):
     res = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={message.text}&appid={TOKEN}&units=metric")
     if res.status_code == 200:

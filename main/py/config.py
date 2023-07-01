@@ -20,6 +20,8 @@ audio = None
 language = None
 text_for_report = None
 user_adress = None
+user_id_feedback = None
+
 
 #defold, if edit - edit in check_is_admin too!
 information = '''
