@@ -16,6 +16,9 @@ users_list = []
 example_text = None
 example_id = None
 feedback_enable = None
+audio = None
+language = None
+text_for_report = None
 
 #defold, if edit - edit in check_is_admin too!
 information = '''
@@ -33,5 +36,6 @@ information = '''
 /leave - Выход с аккаунта
 /status - Статус
 /weather - Узнать погоду
+/TextToAudio - Перевод текста в аудио
 Так-же ты можешь отправить мне фото!
 '''

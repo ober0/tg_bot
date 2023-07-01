@@ -7,14 +7,61 @@ import sqlite3
 import requests
 import json
 from translate import Translator
-from project.py.config import *
-from project.py import check_is_admin
+from config import *
+import check_is_admin
+from langdetect import detect
+from langdetect import detect_langs
+from gtts import gTTS
+import os
+import shutil
 
 translator = Translator(to_lang="Russian")
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 
+
+@bot.message_handler(commands=['TextToAudio'])
+def TextToAudio(message):
+    bot.send_message(message.chat.id, 'Введите текст для преобразования:')
+    bot.register_next_step_handler(message, TextToAudio_text_input)
+
+def TextToAudio_text_input(message):
+    global audio
+    global language
+    global text_for_report
+    text_for_report = message.text
+
+    try:
+        audio = f"../audio_out/audio_for_{message.chat.id}.mp3"
+        if detect(message.text) == 'mk' or detect(message.text) == 'bg':
+            language = 'ru'
+        else:
+            language = detect(message.text)
+    except:
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!')
+        return
+    try:
+        sp = gTTS(text=message.text, lang=language, slow=False)
+        sp.save(audio)
+        markup = types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton('Распознование не верно', callback_data='Recognition_not_correct')
+        markup.row(btn1)
+        file = open(audio, 'rb')
+        bot.send_audio(message.chat.id, file, title='Ваше сообщение')
+        bot.send_message(message.chat.id, f'Язык сообщения: {language}\nЕсли язык распознан не правильно нажмите на кнопку ниже:', reply_markup=markup)
+
+    except:
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!')
+        return
+
+
+def bug_report(error, chat_id, path):
+    with open(f'../{path}/report.txt', 'w', encoding='utf-8') as file1:
+        file1.write(f'Текст: {text_for_report}\nЯзык: {language}')
+    with open('../sql/new_reports.txt', 'a', encoding='utf-8')as file2:
+        file2.write(f'../{path}/report.txt\n')
+    shutil.move(f'{audio}', f'../{path}')
 
 @bot.message_handler(commands=['leave'])
 def leave(message):
@@ -492,6 +539,20 @@ def callback(callback):
 
     elif callback.data == 'edit':
         bot.edit_message_text("Какое красивое фото!", callback.message.chat.id, callback.message.message_id)
+
+    elif callback.data == 'Recognition_not_correct':
+        try:
+            os.mkdir(f'../errors/{str(callback.message.chat.id)}')
+        except:
+            pass
+        try:
+            error = str(random.randint(1,100000000))
+            os.mkdir(f'../errors/{str(callback.message.chat.id)}/error:{error}')
+        except:
+            error = str(random.randint(1, 100000000))
+            os.mkdir(f'../errors/{str(callback.message.chat.id)}/error{error}')
+        bot.send_message(callback.message.chat.id, 'Спасибо! Отчет об ошибке отправлен, при необходимости с вами свяжется администратор.')
+        bug_report(error, str(callback.message.chat.id), f'errors/{str(callback.message.chat.id)}/error{error}')
 
     elif callback.data == 'delete_last':
         bot.delete_message(callback.message.chat.id, callback.message.message_id)

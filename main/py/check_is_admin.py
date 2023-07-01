@@ -19,6 +19,7 @@ def check_info_adm(user):
 /weather - Узнать погоду
 /weather_users_info - Список городов (для администрации)
 /DeleteMsg - удалить сообщения (для администрации) (багает)
+/TextToAudio - Перевод текста в аудио
 Так-же ты можешь отправить мне фото!
 '''
     else:
@@ -37,6 +38,7 @@ def check_info_adm(user):
 /leave - Выход с аккаунта
 /status - Статус
 /weather - Узнать погоду
+/TextToAudio - Перевод текста в аудио
 Так-же ты можешь отправить мне фото!
 '''
     return information
