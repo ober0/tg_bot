@@ -24,7 +24,6 @@ def Send_Message(message):
     if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, 'У вас недостаточно прав!')
         return
-    print(user_is_admin, admins_list)
     bot.send_message(message.chat.id, 'Введите id адресанта')
 
     bot.register_next_step_handler(message, Send_Message_step1)
@@ -185,8 +184,7 @@ def leave(message):
     user_is_admin = None
     information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
     bot.send_message(message.chat.id, 'Выход успешен!')
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Выполнил выход из аккаунта')
+
 
 
 @bot.message_handler(commands=['weather_users_info'])
@@ -201,14 +199,12 @@ def users(message):
     cur.close()
     conn.close()
     if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, info)
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список городов пользователей')
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+
 
     else:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) не смог посмотреть список городов пользователей из-за отсутствия прав администратора')
+        bot.send_message(message.chat.id, info)
+
 
 
 @bot.message_handler(commands=['users'])
@@ -223,14 +219,12 @@ def users(message):
     cur.close()
     conn.close()
     if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, info)
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список учетных записей')
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+
 
     else:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) не смог посмотреть учетные записи из-за отсутствия прав администратора')
+        bot.send_message(message.chat.id, info)
+
 
 
 @bot.message_handler(commands=['reg'])
@@ -249,8 +243,7 @@ def reg_user(message):
 
 @bot.message_handler(commands=['weather'])
 def weather(message):
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) ввел команду weather')
+
     global weather_get
     global user_city
     global weather_get_id
@@ -262,7 +255,6 @@ def weather(message):
     cur.execute('SELECT * FROM users')
     data = cur.fetchall()
     res = []
-    print(data)
     for i in data:
         res.insert(0, i)
     for i in res:
@@ -275,7 +267,6 @@ def weather(message):
                     f"https://api.openweathermap.org/data/2.5/weather?q={user_city}&appid={TOKEN}&units=metric")
                 try:
                     res = json.loads(res.text)
-                    print(res)
                     markup1 = types.InlineKeyboardMarkup()
                     btn_yes = types.InlineKeyboardButton('Да', callback_data='Yes_izm')
                     btn_no = types.InlineKeyboardButton('Нет', callback_data='No')
@@ -315,7 +306,7 @@ def auth_user(message):
 
 @bot.message_handler(commands=['DeleteMsg'])
 def delete_msg(message):
-    if not user_is_admin or not message.chat.id in admins_list:
+    if user_is_admin and message.chat.id in admins_list:
         bot.send_message(message.chat.id, 'Кол-во сообщений:')
         bot.register_next_step_handler(message, delete_colvo_message)
         return
@@ -328,10 +319,8 @@ def delete_colvo_message(message):
         while True:
             try:
                 bot.delete_message(message.chat.id, message.message_id - x)
-                print(x)
                 x += 1
             except:
-                print('error')
                 pass
 
     else:
@@ -339,7 +328,6 @@ def delete_colvo_message(message):
             count = int(message.text)
             for i in range(count):
                 bot.delete_message(message.chat.id, message.message_id - x)
-                print(x)
                 x += 1
         except:
             bot.delete_message(message.chat.id, message.message_id)
@@ -358,8 +346,6 @@ def login_auth(message):
         bot.register_next_step_handler(message, password_auth)
     else:
         bot.send_message(message.chat.id, 'Не используйте символ /')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Авторизация безуспешна')
         auth_process = False
 
 
@@ -376,8 +362,6 @@ def password_auth(message):
     else:
         bot.send_message(message.chat.id, 'Не используйте символ /')
         auth_process = False
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Авторизация безуспешна')
         return
     conn = sqlite3.connect('../sql/ober.sql')
     cur = conn.cursor()
@@ -409,8 +393,6 @@ def password_auth(message):
                         auth_process = False
                         cur.close()
                         conn.close()
-                        print(
-                            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Авторизация успешная')
                         return
                 cur.close()
                 conn.close()
@@ -422,8 +404,6 @@ def password_auth(message):
     auth_process = False
     cur.close()
     conn.close()
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Авторизация безуспешна')
 
 
 
@@ -451,8 +431,7 @@ def user_login(message):
             return
     else:
         bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Регистрация безуспешна')
+
 
 
 def user_pass(message):
@@ -469,12 +448,10 @@ def user_pass(message):
         marcup.add(telebot.types.InlineKeyboardButton('Список пользователей', callback_data='users'))
         bot.send_message(message.chat.id, 'Вы зарегистрированны!\nИспользуйте /auth для входа в учетную запись',
                          reply_markup=marcup)
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Успешно зарегистрировался')
+
     else:
         bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Регистрация безуспешна')
+
 
 
 @bot.message_handler(commands=['feedback'])
@@ -485,8 +462,7 @@ def feedback(message):
     bot.send_message(message.chat.id, parse_mode='html',
                      text='<b>Для связи</b>:\ndiscord - Ober11#7777\ntg - @Oberrrr\nИли вы можете оставить Feedback по кнопке ниже:',
                      reply_markup=markup)
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку feedback_information')
+
 
 
 @bot.message_handler(commands=['example'])
@@ -496,16 +472,14 @@ def example(message):
     bot.send_message(message.chat.id, 'Отправьте ваш пример:')
     example_text = True
     example_id = message.message_id
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку example')
+
 
 
 @bot.message_handler(commands=["audio"])
 def audio(message):
     file = open('../audio/voice.mp3', 'rb')
     bot.send_audio(message.chat.id, file)
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку audio')
+
 
 
 @bot.message_handler(commands=["start"])
@@ -517,8 +491,7 @@ def main(message):
                      f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help",
                      reply_markup=markup)
     bot.register_next_step_handler(message, on_click_help)
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку start')
+
 
 
 def on_click_help(message):
@@ -526,8 +499,7 @@ def on_click_help(message):
         help1(message)
     else:
         bot.send_message(message.chat.id, "Ошибка. Попробуйте еще раз. Логи ошибки уже доставлены разработчику")
-        print(
-            f"\nERROR    Пользователь {message.from_user.first_name} (id:{message.from_user.id}  Команда не обработана\n")
+
 
 
 @bot.message_handler(commands=["help"])
@@ -537,8 +509,7 @@ def help1(message):
     information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
 
     bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку help')
+
 
 
 @bot.message_handler(commands=["photo"])
@@ -546,30 +517,26 @@ def send_photo(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete_last')
     markup.row(btn1)
-    file = open(f'img/flower{random.randint(1, 3)}.png', 'rb')
+    file = open(f'../img/flower{random.randint(1, 3)}.png', 'rb')
     bot.send_photo(message.chat.id, file, reply_markup=markup)
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку фото')
+
 
 
 @bot.message_handler(commands=["id"])
 def id(message):
     bot.reply_to(message, f'Ваш id : {message.from_user.id}')
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку id')
+
 
 
 @bot.message_handler(commands=["website", "site"])
 def website(message):
     webbrowser.open("https://ober1.st8.ru/")
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку site')
+
 
 
 @bot.message_handler(commands=['status'])
 def status(message):
-    # print(user_input_login)
-    if not user_is_admin or not message.chat.id in admins_list:
+    if user_is_admin and message.chat.id in admins_list:
         bot.send_message(message.chat.id, f'Администратор ({message.from_user.id})')
     else:
         bot.send_message(message.chat.id, f'Пользователь ({message.from_user.id})')
@@ -583,7 +550,7 @@ def get_photo(message):
     markup.row(btn1, btn2)
     markup.add()
     bot.reply_to(message, "Какое красивое фото!", reply_markup=markup)
-    print(f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) отправил фото')
+
 
 
 @bot.message_handler()
@@ -607,14 +574,12 @@ def info(message):
             bot.send_message(message.chat.id, f'Погода в {user_city}: {round(int(data["main"]["temp"]))}°C\n')
             bot.send_message(message.chat.id, 'Сохранить город?', reply_markup=markup1)
             weather_get = False
-            print(
-                f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Узнал погоду')
+
         except:
             bot.send_message(message.chat.id,
                              'Город указан не верно. Если вы уверенны, что город введен верно напишите /feedback')
             weather_get = False
-            print(
-                f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Узнал погоду')
+
 
     elif message.text.lower() == "привет":
         bot.send_message(message.chat.id, "Здарова")
@@ -630,8 +595,6 @@ def info(message):
 
         elif example_text == True and message.message_id - 2 == example_id:
             try:
-                print(
-                    f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) ввел пример:{message.text} (id:{message.message_id - 1}) ')
                 example_text = False
                 markup = types.InlineKeyboardMarkup()
                 markup.add(types.InlineKeyboardButton('Решить еще', callback_data='example_repeat'))
@@ -641,8 +604,7 @@ def info(message):
                 bot.send_message(message.chat.id, "Повторите ввод.")
         else:
             bot.send_message(message.chat.id, 'Такой команды нет. /help - чтобы узнать команды')
-        print(
-            f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) отправил сообщение id:{message.message_id - 1} text:{message.text}')
+
 
 
 @bot.callback_query_handler(func=lambda callback: True)
@@ -656,8 +618,7 @@ def callback(callback):
         bot.delete_message(callback.message.chat.id, callback.message.message_id - 1)
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         bot.send_message(callback.message.chat.id, "Фото удалено!")
-        print(
-            f'{datetime.now()}: Пользователь {callback.message.from_user.first_name} (id:{callback.message.from_user.id}) Нажал на кнопку delete_photo')
+
 
     elif callback.data == 'edit':
         bot.edit_message_text("Какое красивое фото!", callback.message.chat.id, callback.message.message_id)
@@ -689,16 +650,14 @@ def callback(callback):
     elif callback.data == 'delete_last':
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         bot.send_message(callback.message.chat.id, "Фото удалено!")
-        print(
-            f'{datetime.now()}: Пользователь {callback.message.from_user.first_name} (id:{callback.message.from_user.id}) Нажал на кнопку delete_last_photo')
+
 
     elif callback.data == 'example_repeat':
         example_text = True
         bot.send_message(callback.message.chat.id, 'Введите пример:')
         example_id = callback.message.message_id
 
-        print(
-            f'{datetime.now()}: Пользователь {callback.message.from_user.first_name} (id:{callback.message.from_user.id}) Нажал на кнопку Решить еще')
+
 
     elif callback.data == 'feedback_logs':
         feedback_enable = True
@@ -737,8 +696,7 @@ def edit_city(message):
         bot.send_message(message.chat.id, 'Успешно!')
     else:
         bot.send_message(message.chat.id, 'Не правильный город')
-    print(
-        f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) изменил город')
+
 
 
 @bot.callback_query_handler(func=lambda call: True)
