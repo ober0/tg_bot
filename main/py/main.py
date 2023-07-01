@@ -21,9 +21,10 @@ bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 @bot.message_handler(commands=['Send_Message'])
 def Send_Message(message):
-    if not user_is_admin:
+    if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, 'У вас недостаточно прав!')
         return
+    print(user_is_admin, admins_list)
     bot.send_message(message.chat.id, 'Введите id адресанта')
 
     bot.register_next_step_handler(message, Send_Message_step1)
@@ -49,9 +50,9 @@ def TextToAudio(message):
 
 @bot.message_handler(commands=['reports'])
 def check_reports(message):
-    # if not user_is_admin:
-    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-    #     return
+    if not user_is_admin or not message.chat.id in admins_list:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+        return
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
     btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
@@ -87,7 +88,10 @@ def report_check_feedback(message):
         bot.send_message(message.chat.id, 'Репортов нет.')
 
 def report_check_feedback_step2(message):
-    bot.send_message(user_id_feedback, f'<b>Ответ администратора на ваше обращение:</b> {message.text}\nПодробнее - discord - Ober11#7777      tg - @Oberrrr', parse_mode='html')
+    try:
+        bot.send_message(user_id_feedback, f'<b>Ответ администратора на ваше обращение:</b> {message.text}\nПодробнее - discord - Ober11#7777      tg - @Oberrrr', parse_mode='html')
+    except:
+        pass
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('Да', callback_data='report_yes1')
     btn2 = types.InlineKeyboardButton('Нет', callback_data='report_no1')
@@ -179,7 +183,7 @@ def leave(message):
     global information
     account = None
     user_is_admin = None
-    information = (check_is_admin.check_info_adm(user_is_admin))
+    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
     bot.send_message(message.chat.id, 'Выход успешен!')
     print(
         f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Выполнил выход из аккаунта')
@@ -196,7 +200,7 @@ def users(message):
         info += f'id: {i[0]}, Город: {i[1]}\n'
     cur.close()
     conn.close()
-    if user_is_admin:
+    if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, info)
         print(
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список городов пользователей')
@@ -218,7 +222,7 @@ def users(message):
         info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
     cur.close()
     conn.close()
-    if user_is_admin:
+    if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, info)
         print(
             f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) посмотрел список учетных записей')
@@ -311,7 +315,7 @@ def auth_user(message):
 
 @bot.message_handler(commands=['DeleteMsg'])
 def delete_msg(message):
-    if user_is_admin:
+    if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, 'Кол-во сообщений:')
         bot.register_next_step_handler(message, delete_colvo_message)
         return
@@ -392,10 +396,16 @@ def password_auth(message):
                 users = cur.fetchall()
                 for j in users:
                     if str(j[1]) == str(i[1]) and str(j[2]) == str(i[2]):
-                        bot.send_message(message.chat.id,
-                                         f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+                        if message.chat.id in admins_list:
+                            bot.send_message(message.chat.id,
+                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+                        else:
+                            admins_list.append(message.chat.id)
+                            bot.send_message(message.chat.id,
+                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+
                         user_is_admin = True
-                        information = (check_is_admin.check_info_adm(user_is_admin))
+                        information = (check_is_admin.check_info_adm(user_is_admin,  message.chat.id, admins_list))
                         auth_process = False
                         cur.close()
                         conn.close()
@@ -524,6 +534,8 @@ def on_click_help(message):
 def help1(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('Перейти на сайт', url="https://ober1.st8.ru/"))
+    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
+
     bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
     print(
         f'{datetime.now()}: Пользователь {message.from_user.first_name} (id:{message.from_user.id}) Нажал на кнопку help')
@@ -556,7 +568,8 @@ def website(message):
 
 @bot.message_handler(commands=['status'])
 def status(message):
-    if user_is_admin:
+    # print(user_input_login)
+    if not user_is_admin or not message.chat.id in admins_list:
         bot.send_message(message.chat.id, f'Администратор ({message.from_user.id})')
     else:
         bot.send_message(message.chat.id, f'Пользователь ({message.from_user.id})')
@@ -739,7 +752,7 @@ def callback2(call):
         info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
     cur.close()
     conn.close()
-    if user_is_admin:
+    if not user_is_admin or not call.message.chat.id in admins_list:
         bot.send_message(call.message.chat.id, info)
     else:
         bot.send_message(call.message.chat.id, 'У вас недостаточно прав!')

@@ -22,6 +22,7 @@ text_for_report = None
 user_adress = None
 user_id_feedback = None
 
+admins_list = [947827934]
 
 #defold, if edit - edit in check_is_admin too!
 information = '''

@@ -1,6 +1,7 @@
-def check_info_adm(user):
+def check_info_adm(user, p1, p2):
     global information
-    if user == True:
+    print(p1)
+    if user == True and p1 in p2:
         information = '''
 <b>information:</b>
 /start - Старт бота
