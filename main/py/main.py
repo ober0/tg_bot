@@ -28,6 +28,30 @@ def Send_Message(message):
 
     bot.register_next_step_handler(message, Send_Message_step1)
 
+@bot.message_handler(commands=['send_all'])
+def send_all(message):
+    if not user_is_admin or not message.chat.id in admins_list:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+        return
+    bot.send_message(message.chat.id, 'Введите сообщение:')
+    bot.register_next_step_handler(message, send_all_step2)
+
+def send_all_step2(message, success = 0, not_success = 0, success_list=[]):
+    with open('../sql/users.txt', 'r', encoding='utf-8')as file:
+        users_list = file.readlines()
+        for i in users_list:
+            try:
+                bot.send_message(int(i), message.text)
+                success += 1
+                success_list.append(i)
+            except:
+                not_success += 1
+        if not_success > 0:
+            bot.send_message(message.chat.id, f'<b>Рассылка завершена</b>.\nУспешно - {success}\nНеуспешно - {not_success}\n<u>id с неудачной рассылкой удалены из списка</u>', parse_mode='html')
+    with open('../sql/users.txt', 'w', encoding='utf-8')as file4:
+        for j in success_list:
+            file4.write(str(j))
+
 def Send_Message_step1(message):
     global user_adress
     user_adress = message.text
@@ -44,6 +68,7 @@ def Send_Message_step2(message):
 
 @bot.message_handler(commands=['text_to_audio'])
 def TextToAudio(message):
+    check_id(message.chat.id)
     bot.send_message(message.chat.id, 'Введите текст для преобразования:')
     bot.register_next_step_handler(message, TextToAudio_text_input)
 
@@ -177,6 +202,7 @@ def bug_report(error, chat_id, path):
 
 @bot.message_handler(commands=['leave'])
 def leave(message):
+    check_id(message.chat.id)
     global account
     global user_is_admin
     global information
@@ -229,6 +255,7 @@ def users(message):
 
 @bot.message_handler(commands=['reg'])
 def reg_user(message):
+    check_id(message.chat.id)
     global id
     conn = sqlite3.connect('../sql/ober.sql')
     cur = conn.cursor()
@@ -243,7 +270,7 @@ def reg_user(message):
 
 @bot.message_handler(commands=['weather'])
 def weather(message):
-
+    check_id(message.chat.id)
     global weather_get
     global user_city
     global weather_get_id
@@ -295,6 +322,7 @@ def weather(message):
 
 @bot.message_handler(commands=['auth'])
 def auth_user(message):
+    check_id(message.chat.id)
     global auth_process
     auth_process = True
     try:
@@ -467,6 +495,7 @@ def feedback(message):
 
 @bot.message_handler(commands=['example'])
 def example(message):
+    check_id(message.chat.id)
     global example_text
     global example_id
     bot.send_message(message.chat.id, 'Отправьте ваш пример:')
@@ -480,10 +509,19 @@ def audio(message):
     file = open('../audio/voice.mp3', 'rb')
     bot.send_audio(message.chat.id, file)
 
+def check_id(id):
+    y = []
+    with open('../sql/users.txt', 'r+', encoding='utf-8')as file:
+        x = file.readlines()
+        for i in x:
+            y.append(str(i.replace('\n', '')))
+        if str(id) not in y:
+            file.write(f'{id}\n')
 
 
 @bot.message_handler(commands=["start"])
 def main(message):
+    check_id(message.chat.id)
     markup = types.ReplyKeyboardMarkup()
     btn1 = types.KeyboardButton("Помощь по командам")
     markup.row(btn1)
@@ -491,6 +529,7 @@ def main(message):
                      f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help",
                      reply_markup=markup)
     bot.register_next_step_handler(message, on_click_help)
+
 
 
 
@@ -504,6 +543,7 @@ def on_click_help(message):
 
 @bot.message_handler(commands=["help"])
 def help1(message):
+    check_id(message.chat.id)
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('Перейти на сайт', url="https://ober1.st8.ru/"))
     information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
@@ -711,9 +751,9 @@ def callback2(call):
     cur.close()
     conn.close()
     if not user_is_admin or not call.message.chat.id in admins_list:
-        bot.send_message(call.message.chat.id, info)
-    else:
         bot.send_message(call.message.chat.id, 'У вас недостаточно прав!')
+    else:
+        bot.send_message(call.message.chat.id, info)
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
