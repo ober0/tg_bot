@@ -21,6 +21,37 @@ translator = Translator(to_lang="Russian")
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
+@bot.message_handler(commands=['vip_info'])
+def vip_info(message):
+    bot.send_message(message.chat.id, f'<b>vip_info</b>\n{possibilities}', parse_mode='html')
+
+@bot.message_handler(commands=['buy_vip'])
+def buy_vip(message):
+    bot.send_message(message.chat.id, '<b>Автоматическая продажа еще в ращработке. Для покупки vip статуса напишите @Oberrrr</b>\nСтоимость - <u>99р</u>\nВозморжности вип - /vip_info', parse_mode='html')
+
+
+@bot.message_handler(commands=['get_vip'])
+def get_vip(message):
+    if user_is_admin and int(message.chat.id) == 947827934:
+        bot.send_message(message.chat.id, 'Введите id человека, которому хотите выдать вип:')
+        bot.register_next_step_handler(message, get_vip_step2)
+    else:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+def get_vip_step2(message):
+    global new_vip_people
+    new_vip_people = message.text
+    bot.send_message(message.chat.id, 'Введите пароль:')
+    bot.register_next_step_handler(message, get_vip_step3)
+
+def get_vip_step3(message):
+    if message.text == 'qwerty123321':
+        id = new_vip_people
+        with open('../sql/vip.txt', 'a', encoding='utf-8')as file1:
+            file1.write(f'{id}\n')
+            bot.delete_message(message.chat.id, message.message_id)
+            bot.delete_message(message.chat.id, message.message_id-1)
+            bot.send_message(message.chat.id, 'Успешно.')
+
 
 @bot.message_handler(commands=['convert_currency'])
 def convert(message):
@@ -695,8 +726,20 @@ def info(message):
         help1(message)
     else:
         if feedback_enable == True and feedback_id + 2 == message.id:
+            with open('../sql/vip.txt', 'r', encoding='utf-8')as file5:
+                all_vips = file5.readlines()
+                vip_list = []
+                for i in all_vips:
+                    i = i.replace('\n', '')
+                    vip_list.append(i)
             with open('../sql/feedback.txt', 'a', encoding='utf-8')as file:
-                file.write(f'Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке. text:{message.text}\n')
+                if str(message.from_user.id) in vip_list:
+                    file.write(f'Пользователь vip*{message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке. text:{message.text}\n')
+                else:
+                    file.write(
+                        f'Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке. text:{message.text}\n')
+
+                    print('dont work')
             feedback_enable = False
             bot.send_message(message.chat.id, 'Обращение отправлено')
 

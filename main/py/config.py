@@ -22,9 +22,17 @@ text_for_report = None
 user_adress = None
 user_id_feedback = None
 amount = 0
+new_vip_people = None
 
 admins_list = [947827934]
 
+#вохможности вип
+possibilities = '''
+Стоимость - <u>99р</u>
+Просмотр ваших обращений без очереди.
+В разработке....
+Купить вип - /buy_vip
+'''
 #defold, if edit - edit in check_is_admin too!
 information = '''
 <b>information:</b>
