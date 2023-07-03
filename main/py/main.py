@@ -126,9 +126,9 @@ def TextToAudio(message):
 
 @bot.message_handler(commands=['reports'])
 def check_reports(message):
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        return
+    # if not user_is_admin or not message.chat.id in admins_list:
+    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+    #     return
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
     btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
@@ -143,15 +143,31 @@ def check_reports(message):
     bot.send_message(message.chat.id, '<b>Выберите категорию:</b>',reply_markup=markup, parse_mode='html')
 
 
-def report_check_feedback(message):
+def report_check_feedback(message, user_know=False, user_first=0):
     global user_id_feedback
     try:
         with open('../sql/feedback.txt', 'r', encoding='utf-8') as reports:
             reports_list = reports.readlines()
-            i = reports_list[0]
+            for j in reports_list:
+                user_first += 1
+                x = j.replace('\n', '')
+                user = (x[12:x.find(")") + 1])
+                print(user[1:4])
+                if user[1:4] == 'vip':
+                    user = (x[17:x.find(")") + 1])
+                    user_know = True
+                    break
+            if user_know == False:
+                i = reports_list[0]
+            else:
+                i = reports_list[user_first-1]
             i = i.replace('\n', '')
             user_id_feedback = (i[i.find("(")+4:i.find(')')])
-            bot.send_message(message.chat.id, f'Сообщение от: {(i[12:i.find(")")+1])}')
+            if user_know == False:
+                user = (i[12:i.find(")")+1])
+
+
+            bot.send_message(message.chat.id, f'Сообщение от: {user}')
             bot.send_message(message.chat.id, f'Текст: {i[i.find("text")+5:]}')
             bot.send_message(message.chat.id, f'Ответьте пользователю:')
             bot.register_next_step_handler(message, report_check_feedback_step2)
@@ -164,7 +180,10 @@ def report_check_feedback(message):
             for i in reports_list:
                 i = i.replace('\n', '')
                 reports_list1.append(i)
-            reports_list1.pop(0)
+            if user_know == True:
+                reports_list1.pop(user_first-1)
+            else:
+                reports_list1.pop(0)
             for i in reports_list1:
                 reports2.write(f'{i}\n')
     except:
@@ -622,8 +641,6 @@ def id(message):
 @bot.message_handler(commands=["website", "site"])
 def website(message):
     webbrowser.open("https://ober1.st8.ru/")
-
-
 
 @bot.message_handler(commands=['status'])
 def status(message):
