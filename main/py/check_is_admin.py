@@ -25,6 +25,9 @@ def check_info_adm(user, p1, p2):
 /reports - просмотр и закрытие репортов (для администрации)
 /send_all - отправить всем (для администрации)
 /convert_currency - конвертатор валют
+/vip_info - информация о вип
+/buy_vip - купить вип
+/get_vip - выдать вип (для администрации)
 Так-же ты можешь отправить мне фото!
 '''
     else:
@@ -46,5 +49,7 @@ def check_info_adm(user, p1, p2):
 /text_to_audio - Перевод текста в аудио
 /convert_currency - конвертатор валют
 Так-же ты можешь отправить мне фото!
+/vip_info - информация о вип
+/buy_vip - купить вип
 '''
     return information

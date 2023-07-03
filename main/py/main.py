@@ -232,11 +232,19 @@ def report_check_feedback_step2(message):
     bot.send_message(message.chat.id, 'Репорт просмотрен, открыть следующий?', reply_markup=markup)
 
 
-def report_check_audio(message):
+def report_check_audio(message, vip_count = -1, vip_have = False):
     try:
         with open('../sql/new_reports.txt', 'r', encoding='utf-8')as reports:
             reports_list = reports.readlines()
-            i = reports_list[0]
+            for i in reports_list:
+                vip_count += 1
+                if i[:4] == 'vip*':
+                    i = reports_list[vip_count]
+                    i = i[4:]
+                    vip_have = True
+                    break
+            if vip_have == False:
+                i = reports_list[0]
             i = i.replace('\n', '')
             file_txt = open(f'{i}/report.txt', encoding='utf-8')
             file_mp3 = open(f'{i}/report.mp3', 'rb')
@@ -261,7 +269,10 @@ def report_check_audio(message):
             for i in reports_list:
                 i = i.replace('\n', '')
                 reports_list1.append(i)
-            reports_list1.pop(0)
+            if vip_have == True:
+                reports_list1.pop(vip_count)
+            else:
+                reports_list1.pop(0)
             for i in reports_list1:
                 reports2.write(f'{i}\n')
 
@@ -298,11 +309,20 @@ def TextToAudio_text_input(message):
         return
 
 
-def bug_report(error, chat_id, path):
+def bug_report(message, error, chat_id, path):
     with open(f'../{path}/report.txt', 'w', encoding='utf-8') as file1:
         file1.write(f'Текст: {text_for_report}\nЯзык: {language}\nid: {chat_id}')
+    with open('../sql/vip.txt', 'r', encoding='utf-8')as fil11:
+        x = fil11.readlines()
+        vip_list = []
+        for i in x:
+            i = i.replace('\n', '')
+            vip_list.append(i)
     with open('../sql/new_reports.txt', 'a', encoding='utf-8')as file2:
-        file2.write(f'../{path}\n')
+        if str(message.chat.id) in vip_list:
+            file2.write(f'vip*../{path}\n')
+        else:
+            file2.write(f'../{path}\n')
     try:
         shutil.move(f'{audio}', f'../{path}')
         os.rename(f'../errors/{chat_id}/error{error}/audio_for_{chat_id}.mp3',f'../errors/{chat_id}/error{error}/report.mp3')
@@ -796,7 +816,7 @@ def callback(callback):
             error = str(random.randint(1, 100000000))
             os.mkdir(f'../errors/{str(callback.message.chat.id)}/error{error}')
         bot.send_message(callback.message.chat.id, 'Спасибо! Отчет об ошибке отправлен, при необходимости с вами свяжется администратор.')
-        bug_report(error, str(callback.message.chat.id), f'errors/{str(callback.message.chat.id)}/error{error}')
+        bug_report(callback.message,error, str(callback.message.chat.id), f'errors/{str(callback.message.chat.id)}/error{error}')
 
     elif callback.data == 'delete_last':
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
