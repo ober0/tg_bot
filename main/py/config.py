@@ -21,6 +21,7 @@ language = None
 text_for_report = None
 user_adress = None
 user_id_feedback = None
+amount = 0
 
 admins_list = [947827934]
 
@@ -41,5 +42,7 @@ information = '''
 /status - Статус
 /weather - Узнать погоду
 /text_to_audio - Перевод текста в аудио
+/convert_currency - конвертатор валют
+
 Так-же ты можешь отправить мне фото!
 '''

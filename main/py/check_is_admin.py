@@ -24,6 +24,7 @@ def check_info_adm(user, p1, p2):
 /Send_Message - Отправить сообщение на любой id (Для администрации)
 /reports - просмотр и закрытие репортов (для администрации)
 /send_all - отправить всем (для администрации)
+/convert_currency - конвертатор валют
 Так-же ты можешь отправить мне фото!
 '''
     else:
@@ -43,6 +44,7 @@ def check_info_adm(user, p1, p2):
 /status - Статус
 /weather - Узнать погоду
 /text_to_audio - Перевод текста в аудио
+/convert_currency - конвертатор валют
 Так-же ты можешь отправить мне фото!
 '''
     return information
