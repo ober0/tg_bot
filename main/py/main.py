@@ -133,6 +133,13 @@ def check_reports(message):
     btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
     btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
     markup.row(btn1,btn2)
+    with open('../sql/feedback.txt', 'r', encoding='utf-8')as file:
+        x = file.readlines()
+        new_reports_feedback = len(x)
+    with open('../sql/new_reports.txt', 'r', encoding='utf-8')as file2:
+        y = file2.readlines()
+        new_reports_audio = len(y)
+    bot.send_message(message.chat.id,f'Новых обращений feedback - {new_reports_feedback}\nНовых обращений text to audio - {new_reports_audio}',parse_mode='html')
     bot.send_message(message.chat.id, '<b>Выберите категорию:</b>',reply_markup=markup, parse_mode='html')
 
 
