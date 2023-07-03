@@ -231,7 +231,7 @@ def TextToAudio_text_input(message):
         else:
             language = detect(message.text)
     except:
-        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!')
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
         return
     try:
         sp = gTTS(text=message.text, lang=language, slow=False)
@@ -244,7 +244,7 @@ def TextToAudio_text_input(message):
         bot.send_message(message.chat.id, f'Язык сообщения: {language}\nЕсли язык распознан не правильно нажмите на кнопку ниже:', reply_markup=markup)
         file.close()
     except:
-        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!')
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
         return
 
 
@@ -364,7 +364,7 @@ def weather(message):
                     weather_get = False
                 except:
                     bot.send_message(message.chat.id,
-                                     'Город указан не верно. Если вы уверенны, что город введен верно напишите /feedback')
+                                     'Город указан не верно. Если вы уверенны, что город введен верно - напишите /feedback')
                     weather_get = False
                 cur.close()
                 conn.close()
@@ -581,22 +581,14 @@ def check_id(id):
 @bot.message_handler(commands=["start"])
 def main(message):
     check_id(message.chat.id)
-    markup = types.ReplyKeyboardMarkup()
-    btn1 = types.KeyboardButton("Помощь по командам")
-    markup.row(btn1)
+
     bot.send_message(message.chat.id,
-                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help",
-                     reply_markup=markup)
-    bot.register_next_step_handler(message, on_click_help)
+                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help")
 
 
 
 
-def on_click_help(message):
-    if message.text == "Помощь по командам" or "/help":
-        help1(message)
-    else:
-        bot.send_message(message.chat.id, "Ошибка. Попробуйте еще раз. Логи ошибки уже доставлены разработчику")
+
 
 
 
