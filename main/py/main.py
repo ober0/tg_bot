@@ -90,8 +90,7 @@ def convert_step3(message):
     try:
         values = message.text.upper().split('/')
         res = currency.convert(amount, values[0], values[1])
-        markup = types.InlineKeyboardMarkup()
-        btn = types.InlineKeyboardButton('Повторить', callback_data='repeat_convert')
+
         markup = types.InlineKeyboardMarkup()
         btn = types.InlineKeyboardButton('Повторить', callback_data='repeat_convert')
         markup.add(btn)
@@ -157,9 +156,9 @@ def TextToAudio(message):
 
 @bot.message_handler(commands=['reports'])
 def check_reports(message):
-    # if not user_is_admin or not message.chat.id in admins_list:
-    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-    #     return
+    if not user_is_admin or not message.chat.id in admins_list:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+        return
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
     btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
