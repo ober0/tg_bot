@@ -23,6 +23,7 @@ user_adress = None
 user_id_feedback = None
 amount = 0
 new_vip_people = None
+rem_id = 0
 
 admins_list = [947827934]
 

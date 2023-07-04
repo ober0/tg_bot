@@ -1,5 +1,4 @@
 import random
-from datetime import datetime
 import telebot
 import webbrowser
 from telebot import types
@@ -10,7 +9,6 @@ from translate import Translator
 from config import *
 import check_is_admin
 from langdetect import detect
-from langdetect import detect_langs
 from gtts import gTTS
 import os
 import shutil
@@ -23,13 +21,58 @@ bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 @bot.message_handler(commands=['vip_info'])
 def vip_info(message):
-    bot.send_message(message.chat.id, f'<b>vip_info</b>\n{possibilities}', parse_mode='html')
+    bot.send_message(message.chat.id, f'<b>Информация о vip</b>{possibilities}', parse_mode='html')
 
 @bot.message_handler(commands=['buy_vip'])
 def buy_vip(message):
     bot.send_message(message.chat.id, '<b>Автоматическая продажа еще в ращработке. Для покупки vip статуса напишите @Oberrrr</b>\nСтоимость - <u>99р</u>\nВозморжности вип - /vip_info', parse_mode='html')
 
+@bot.message_handler(commands=['rem_vip'])
+def rem_vip(message):
+    # if user_is_admin and int(message.chat.id) == 947827934:
+    bot.send_message(message.chat.id, 'Введите id человека, у которого хотите забрать вип:')
+    bot.register_next_step_handler(message, rem_vip_step2)
+    # else:
+    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
 
+def rem_vip_step2(message):
+    global rem_id
+    rem_id = message.text
+    bot.send_message(message.chat.id, 'Введите причину:')
+    bot.register_next_step_handler(message, rem_vip_step3)
+
+def rem_vip_step3(message):
+    bot.send_message(message.chat.id, 'Введите пароль:')
+    bot.register_next_step_handler(message, rem_vip_step4)
+
+def rem_vip_step4(message, vip_list=[]):
+    bot.delete_message(message.chat.id, message.message_id)
+    bot.delete_message(message.chat.id, message.message_id-1)
+    if message.text == 'qwerty123321':
+        with open('../sql/vip.txt','r')as file1:
+            all_list = file1.readlines()
+            for i in all_list:
+                i = i.replace('\n', '')
+                vip_list.append(i)
+            if len(vip_list) == 0:
+                bot.send_message(message.chat.id, 'Неудачно.')
+                return
+            for j in vip_list:
+                if int(j) == int(rem_id):
+                    vip_list.remove(j)
+                    try:
+                        bot.send_message(rem_id, f'<b>У вас удален vip статус.</b>\nПричина: {message.text}',
+                                         parse_mode='html')
+                    except telebot.apihelper.ApiTelegramException:
+                        bot.send_message(message.chat.id, 'У пользователя нет вип.')
+                    finally:
+                        pass
+        with open('../sql/vip.txt', 'w') as file2:
+            for l in vip_list:
+                file2.write(f'{str(l)}\n')
+        bot.send_message(message.chat.id, 'Успешно.')
+    else:
+        bot.send_message(message.chat.id, 'Неудачно.')
 @bot.message_handler(commands=['get_vip'])
 def get_vip(message):
     if user_is_admin and int(message.chat.id) == 947827934:
@@ -43,15 +86,22 @@ def get_vip_step2(message):
     bot.send_message(message.chat.id, 'Введите пароль:')
     bot.register_next_step_handler(message, get_vip_step3)
 
-def get_vip_step3(message):
+def get_vip_step3(message, vip_list = []):
     if message.text == 'qwerty123321':
         id = new_vip_people
+        with open('../sql/vip.txt', 'r', encoding='utf-8') as file:
+            read = file.readlines()
+            for i in read:
+                i = i.replace('\n', '')
+                vip_list.append(i)
         with open('../sql/vip.txt', 'a', encoding='utf-8')as file1:
-            file1.write(f'{id}\n')
-            bot.delete_message(message.chat.id, message.message_id)
-            bot.delete_message(message.chat.id, message.message_id-1)
-            bot.send_message(message.chat.id, 'Успешно.')
-
+            if id not in vip_list:
+                file1.write(f'{id}\n')
+                bot.delete_message(message.chat.id, message.message_id)
+                bot.delete_message(message.chat.id, message.message_id-1)
+                bot.send_message(message.chat.id, 'Успешно.')
+            else:
+                bot.send_message(message.chat.id, 'Пльзователь уже имеет вип статус')
 
 @bot.message_handler(commands=['convert_currency'])
 def convert(message):
@@ -182,7 +232,6 @@ def report_check_feedback(message, user_know=False, user_first=0):
                 user_first += 1
                 x = j.replace('\n', '')
                 user = (x[12:x.find(")") + 1])
-                print(user[1:4])
                 if user[1:4] == 'vip':
                     user = (x[17:x.find(")") + 1])
                     user_know = True
@@ -758,7 +807,6 @@ def info(message):
                     file.write(
                         f'Пользователь {message.from_user.first_name} (id:{message.from_user.id}) сообщил об ошибке. text:{message.text}\n')
 
-                    print('dont work')
             feedback_enable = False
             bot.send_message(message.chat.id, 'Обращение отправлено')
 
