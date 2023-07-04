@@ -29,11 +29,11 @@ def buy_vip(message):
 
 @bot.message_handler(commands=['rem_vip'])
 def rem_vip(message):
-    # if user_is_admin and int(message.chat.id) == 947827934:
-    bot.send_message(message.chat.id, 'Введите id человека, у которого хотите забрать вип:')
-    bot.register_next_step_handler(message, rem_vip_step2)
-    # else:
-    #     bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+    if user_is_admin and int(message.chat.id) == 947827934:
+        bot.send_message(message.chat.id, 'Введите id человека, у которого хотите забрать вип:')
+        bot.register_next_step_handler(message, rem_vip_step2)
+    else:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
 
 def rem_vip_step2(message):
     global rem_id
