@@ -19,6 +19,18 @@ translator = Translator(to_lang="Russian")
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
+
+@bot.message_handler(commands=['vip_list'])
+def vip_list(message):
+    if user_is_admin:
+        with open('../sql/vip.txt', 'r', encoding='utf-8')as file:
+            bot.send_message(message.chat.id, f'Список вип пользователей:')
+            for i in file.readlines():
+                bot.send_message(message.chat.id, i.replace('\n', ''))
+
+    else:
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+
 @bot.message_handler(commands=['vip_info'])
 def vip_info(message):
     bot.send_message(message.chat.id, f'<b>Информация о vip</b>{possibilities}', parse_mode='html')
