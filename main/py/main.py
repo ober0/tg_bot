@@ -42,6 +42,8 @@ def rem_vip_step2(message):
     bot.register_next_step_handler(message, rem_vip_step3)
 
 def rem_vip_step3(message):
+    global rem_cause
+    rem_cause = message.text
     bot.send_message(message.chat.id, 'Введите пароль:')
     bot.register_next_step_handler(message, rem_vip_step4)
 
@@ -61,7 +63,7 @@ def rem_vip_step4(message, vip_list=[]):
                 if int(j) == int(rem_id):
                     vip_list.remove(j)
                     try:
-                        bot.send_message(rem_id, f'<b>У вас удален vip статус.</b>\nПричина: {message.text}',
+                        bot.send_message(rem_id, f'<b>У вас удален vip статус.</b>\nПричина: {rem_cause}',
                                          parse_mode='html')
                     except telebot.apihelper.ApiTelegramException:
                         bot.send_message(message.chat.id, 'У пользователя нет вип.')
