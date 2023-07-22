@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns="http://www.w3.org/1999/html">
+<head><meta charset="utf-8">
+	<link href="style.css" rel="stylesheet" type="text/css" />
+	<title>Shop</title>
+</head>
+<body>
+<div id="main">
+	<div class="main-without-label">
+		<h1>Онлайн магазин tg ботов</h1>
+		<img alt="" class="img-bot-1" src="bot-1.png" />
+		<h3>Закажите качественного телеграмм бота</h3>
+		<br>
+		<h2 class="">Заполните форму:</h2>
+
+		<form>
+			<input class="text-field help2" type="text" placeholder="Имя" id="user_name">
+			<input class="text-field help2" type="text" placeholder="Ваш телеграм" id="telegram_id">
+			<input class="text-field help2" type="text" placeholder="Email" id="email">
+			<textarea class="text-field" placeholder="Опишите ваш заказ" id="text" cols="30" rows="5"></textarea>
+		</form>
+
+		<h2>Выберите срок заказа:</h2>
+	</div>
+
+	<div class="term">
+		<label class="container">До 3 дней
+	  		<input id="three-day" type="radio" name="radio">
+	  		<span class="checkmark"></span>
+		</label>
+		<label class="container">До 7 дней
+		  <input id="seven-day" type="radio" name="radio">
+		  <span class="checkmark"></span>
+		</label>
+		<label class="container">До 21 дня
+		  <input id="three-week" type="radio" name="radio">
+		  <span class="checkmark"></span>
+		</label>
+		<label class="container">Сообщу в переписке
+		  <input id="none-day" type="radio" name="radio">
+		  <span class="checkmark"></span>
+		</label>
+	</div>
+	<div class="main-without-label">
+		<button id="buy" type="button" class="btn text-field">Заказать!</button>
+		<p class="init ">dev by ober</p>
+	</div>
+
+
+
+</div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script><script src="script.js"></script></body>
+</html>

@@ -13,11 +13,48 @@ from gtts import gTTS
 import os
 import shutil
 from currency_converter import CurrencyConverter
+from telebot import types
+
 
 currency = CurrencyConverter()
 translator = Translator(to_lang="Russian")
 
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
+
+
+@bot.message_handler(commands=['bot_shop'])
+def bot_shop(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Онлайн магазин',
+                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'))
+    bot.send_message(message.chat.id, 'Привет! У нас вы можете заказать крутого телеграмм бота с различным функционалом!\nЧтобы перейти в магазин используйте кнопку "онлайн магазин"', reply_markup=markup)
+
+@bot.message_handler(content_types=['web_app_data'])
+def web_app(message):
+    res = json.loads(message.web_app_data.data)
+    name = res['name']
+    email = res['email']
+    text = res['text']
+    tg = res['telegram_id']
+    time = res['time']
+    print(name,email,tg,text, time)
+    string = f'{name},{email},{tg},{time},{text}\n'
+    with open('../sql/req.txt', 'a', encoding='utf-8')as file:
+        file.write(string)
+    bot.send_message(message.chat.id, 'Запрос отправлен, с вами свяжется Oberrrr (разработчик)')
+
+@bot.message_handler(commands=['check_orders'])
+def check_orders(message):
+    if not user_is_admin or not message.chat.id in admins_list:
+        bot.send_message(message.chat.id, 'Недостаточно прав')
+        return
+    res = []
+    with open('../sql/req.txt', 'r', encoding='utf-8')as file1:
+        for i in file1.readlines():
+            res.append(i)
+    for i in res:
+        bot.send_message(message.chat.id, i)
 
 
 @bot.message_handler(commands=['vip_list'])
@@ -712,23 +749,23 @@ def check_id(id):
 
 @bot.message_handler(commands=["start"])
 def main(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Онлайн магазин',
+                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'))
     check_id(message.chat.id)
-
     bot.send_message(message.chat.id,
-                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help")
-
-
-
-
-
+                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help\n<b>У нас можно преобрести качественного tg-бота /bot_shop</b>", parse_mode='html', reply_markup=markup)
 
 
 
 @bot.message_handler(commands=["help"])
 def help1(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Онлайн магазин',
+                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'))
     check_id(message.chat.id)
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton('Перейти на сайт', url="https://ober1.st8.ru/"))
     information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
 
     bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
@@ -801,11 +838,12 @@ def info(message):
                              'Город указан не верно. Если вы уверенны, что город введен верно напишите /feedback')
             weather_get = False
 
-
     elif message.text.lower() == "привет":
         bot.send_message(message.chat.id, "Здарова")
+
     elif message.text == "Помощь по командам":
         help1(message)
+
     else:
         if feedback_enable == True and feedback_id + 2 == message.id:
             with open('../sql/vip.txt', 'r', encoding='utf-8')as file5:

@@ -1,6 +1,5 @@
 def check_info_adm(user, p1, p2):
     global information
-    print(p1)
     if user == True and p1 in p2:
         information = '''
 <b>information:</b>
@@ -29,6 +28,8 @@ def check_info_adm(user, p1, p2):
 /buy_vip - купить вип
 /get_vip - выдать вип (для администрации)
 /rem_vip - удалить vip комуто (для администрации)
+/check_orders - Заказы ботов (для администрации)
+/bot_shop - Заказать телеграмм бота
 Так-же ты можешь отправить мне фото!
 '''
     else:
@@ -37,6 +38,7 @@ def check_info_adm(user, p1, p2):
 /start - Старт бота
 /help - Помощь
 /id - Узнать ваш id в telegram
+/bot_shop - Заказать телеграмм бота
 /website - Открыть сайт
 /photo - Я отправлю вам фото
 /audio - Я отправлю вам аудио
@@ -49,8 +51,10 @@ def check_info_adm(user, p1, p2):
 /weather - Узнать погоду
 /text_to_audio - Перевод текста в аудио
 /convert_currency - конвертатор валют
-Так-же ты можешь отправить мне фото!
 /vip_info - информация о вип
 /buy_vip - купить вип
+Так-же ты можешь отправить мне фото!
+
+<b>У нас можно преобрести качественного tg-бота /bot_shop</b>
 '''
     return information
