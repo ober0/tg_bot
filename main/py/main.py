@@ -1,7 +1,6 @@
 import random
 import telebot
 import webbrowser
-from telebot import types
 import sqlite3
 import requests
 import json
@@ -21,6 +20,7 @@ translator = Translator(to_lang="Russian")
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 
+
 #--------------------------------------------------------------------FOR ALL USERS------------------------------------------------------
 
 
@@ -30,11 +30,14 @@ def main(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton('Онлайн магазин',
                                     web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
-    markup.add(types.KeyboardButton('Помощь по командам'))
-    markup.add(types.KeyboardButton('Купить вип статус'))
+    markup.add(types.KeyboardButton('Помощь по командам'), types.KeyboardButton('Купить вип статус'))
     check_id(message.chat.id)
     bot.send_message(message.chat.id,
-                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help\n<b>У нас можно преобрести качественного tg-бота /bot_shop</b>", parse_mode='html', reply_markup=markup)
+f'''
+Привет {message.from_user.first_name} {message.from_user.username}!
+Я бот помощник, напиши /help
+<b>У нас можно преобрести качественного tg-бота /bot_shop</b>
+''', parse_mode='html', reply_markup=markup)
 
 
 
@@ -42,13 +45,11 @@ def main(message):
 @bot.message_handler(commands=["help"])
 def help1(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton('Онлайн магазин',
-                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
-    markup.add(types.KeyboardButton('Помощь по командам'))
-    markup.add(types.KeyboardButton('Купить вип статус'))
+    markup.add(types.KeyboardButton('Онлайн магазин', web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'), types.KeyboardButton('Купить вип статус'))
     check_id(message.chat.id)
-    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
 
+    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
     bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
 
 
@@ -64,7 +65,7 @@ def reg_user(message):
     conn.commit()
     cur.close()
     conn.close()
-    bot.send_message(message.chat.id, 'привет, сейчас тебя зарегистрируем, придумайте логин')
+    bot.send_message(message.chat.id, 'Привет, сейчас тебя зарегистрируем!\n<b>Придумайте логин</b>, он должен быть уникальным!\nДля отмены введите cancel', parse_mode='html')
     bot.register_next_step_handler(message, user_login)
 
 def user_login(message):
@@ -81,8 +82,9 @@ def user_login(message):
     if not '/' in message.text.strip():
         if not message.text.strip() in str(users_list):
             login = message.text.strip()
-
-            bot.send_message(message.chat.id, 'введите пароль')
+            if login == "cancel":
+                return
+            bot.send_message(message.chat.id, 'Придумайте пароль.\nОн должен не повторять логин, а так же быть длинной более 6 символов\nДля отмены введите cancel', parse_mode='html')
             bot.register_next_step_handler(message, user_pass)
         else:
             bot.send_message(message.chat.id, "Придумайте другой login:")
@@ -96,18 +98,23 @@ def user_login(message):
 def user_pass(message):
     if not '/' in message.text.strip():
         password = message.text.strip()
-        conn = sqlite3.connect('../sql/ober.sql')
-        cur = conn.cursor()
-        cur.execute(f'INSERT INTO users (id, login, pass) VALUES ("%s", "%s","%s")' % (id, login, password))
-        conn.commit()
-        cur.close()
-        conn.close()
+        if password == "cancel":
+            return
+        if len(password) > 6 and password != login:
+            conn = sqlite3.connect('../sql/ober.sql')
+            cur = conn.cursor()
+            cur.execute(f'INSERT INTO users (id, login, pass) VALUES ("%s", "%s","%s")' % (id, login, password))
+            conn.commit()
+            cur.close()
+            conn.close()
 
-        marcup = types.InlineKeyboardMarkup()
-        marcup.add(telebot.types.InlineKeyboardButton('Список пользователей', callback_data='users'))
-        bot.send_message(message.chat.id, 'Вы зарегистрированны!\nИспользуйте /auth для входа в учетную запись',
-                         reply_markup=marcup)
-
+            marcup = types.InlineKeyboardMarkup()
+            marcup.add(telebot.types.InlineKeyboardButton('Список пользователей', callback_data='users'))
+            bot.send_message(message.chat.id, 'Вы зарегистрированны!\nИспользуйте /auth для входа в учетную запись',
+                             reply_markup=marcup)
+        else:
+            bot.send_message(message.chat.id, 'Придумайте другой пароль:')
+            bot.register_next_step_handler(message, user_pass)
     else:
         bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
 
@@ -235,12 +242,10 @@ def website(message):
 #-----------------------/photo----------------------
 @bot.message_handler(commands=["photo"])
 def send_photo(message):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete_last')
-    markup.row(btn1)
-    file = open(f'../img/flower{random.randint(1, 3)}.png', 'rb')
-    bot.send_photo(message.chat.id, file, reply_markup=markup)
-
+    markup = types.InlineKeyboardMarkup()
+    markup.row(types.InlineKeyboardButton('Удалить фото', callback_data='delete_last'))
+    with open(f'../img/flower{random.randint(1, 3)}.png', 'rb')as file:
+        bot.send_photo(message.chat.id, file, reply_markup=markup)
 
 #-----------------------/audio----------------------
 @bot.message_handler(commands=["audio"])
@@ -447,8 +452,7 @@ def bot_shop(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton('Онлайн магазин',
                                     web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
-    markup.add(types.KeyboardButton('Помощь по командам'))
-    markup.add(types.KeyboardButton('Купить вип статус'))
+    markup.add(types.KeyboardButton('Помощь по командам'), types.KeyboardButton('Купить вип статус'))
     bot.send_message(message.chat.id, 'Привет! У нас вы можете заказать крутого телеграмм бота с различным функционалом!\nЧтобы перейти в магазин используйте кнопку "онлайн магазин"', reply_markup=markup)
 
 @bot.message_handler(content_types=['web_app_data'])
@@ -486,7 +490,6 @@ def users(message):
         info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
     cur.close()
     conn.close()
-
     if check_status(message) != False:
         bot.send_message(message.chat.id, info)
 
