@@ -18,142 +18,355 @@ from telebot import types
 
 currency = CurrencyConverter()
 translator = Translator(to_lang="Russian")
-
 bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
 
 
-@bot.message_handler(commands=['bot_shop'])
-def bot_shop(message):
+#--------------------------------------------------------------------FOR ALL USERS------------------------------------------------------
+
+
+#-----------------------/start----------------------
+@bot.message_handler(commands=["start"])
+def main(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add(types.KeyboardButton('Онлайн магазин',
                                     web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
     markup.add(types.KeyboardButton('Помощь по командам'))
-    bot.send_message(message.chat.id, 'Привет! У нас вы можете заказать крутого телеграмм бота с различным функционалом!\nЧтобы перейти в магазин используйте кнопку "онлайн магазин"', reply_markup=markup)
+    markup.add(types.KeyboardButton('Купить вип статус'))
+    check_id(message.chat.id)
+    bot.send_message(message.chat.id,
+                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help\n<b>У нас можно преобрести качественного tg-бота /bot_shop</b>", parse_mode='html', reply_markup=markup)
 
-@bot.message_handler(content_types=['web_app_data'])
-def web_app(message):
-    res = json.loads(message.web_app_data.data)
-    name = res['name']
-    email = res['email']
-    text = res['text']
-    tg = res['telegram_id']
-    time = res['time']
-    print(name,email,tg,text, time)
-    string = f'{name},{email},{tg},{time},{text}\n'
-    with open('../sql/req.txt', 'a', encoding='utf-8')as file:
-        file.write(string)
-    bot.send_message(message.chat.id, 'Запрос отправлен, с вами свяжется Oberrrr (разработчик)')
 
-@bot.message_handler(commands=['check_orders'])
-def check_orders(message):
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'Недостаточно прав')
+
+#-----------------------/help----------------------
+@bot.message_handler(commands=["help"])
+def help1(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Онлайн магазин',
+                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'))
+    markup.add(types.KeyboardButton('Купить вип статус'))
+    check_id(message.chat.id)
+    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
+
+    bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
+
+
+#-----------------------/reg----------------------
+@bot.message_handler(commands=['reg'])
+def reg_user(message):
+    check_id(message.chat.id)
+    global id
+    conn = sqlite3.connect('../sql/ober.sql')
+    cur = conn.cursor()
+    id = message.from_user.id
+    cur.execute('CREATE TABLE IF NOT EXISTS users (id int(50), login varchar(50), pass varchar(50))')
+    conn.commit()
+    cur.close()
+    conn.close()
+    bot.send_message(message.chat.id, 'привет, сейчас тебя зарегистрируем, придумайте логин')
+    bot.register_next_step_handler(message, user_login)
+
+def user_login(message):
+    global users_list
+    global login
+    conn = sqlite3.connect('../sql/ober.sql')
+    cur = conn.cursor()
+    cur.execute('SELECT login FROM users')
+    users1 = cur.fetchall()
+    for i in users1:
+        users_list.append(i)
+    cur.close()
+    conn.close()
+    if not '/' in message.text.strip():
+        if not message.text.strip() in str(users_list):
+            login = message.text.strip()
+
+            bot.send_message(message.chat.id, 'введите пароль')
+            bot.register_next_step_handler(message, user_pass)
+        else:
+            bot.send_message(message.chat.id, "Придумайте другой login:")
+            bot.register_next_step_handler(message, user_login)
+            return
+    else:
+        bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
+
+
+
+def user_pass(message):
+    if not '/' in message.text.strip():
+        password = message.text.strip()
+        conn = sqlite3.connect('../sql/ober.sql')
+        cur = conn.cursor()
+        cur.execute(f'INSERT INTO users (id, login, pass) VALUES ("%s", "%s","%s")' % (id, login, password))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        marcup = types.InlineKeyboardMarkup()
+        marcup.add(telebot.types.InlineKeyboardButton('Список пользователей', callback_data='users'))
+        bot.send_message(message.chat.id, 'Вы зарегистрированны!\nИспользуйте /auth для входа в учетную запись',
+                         reply_markup=marcup)
+
+    else:
+        bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
+
+
+
+#-----------------------/auth----------------------
+@bot.message_handler(commands=['auth'])
+def auth_user(message):
+    check_id(message.chat.id)
+    global auth_process
+    auth_process = True
+    try:
+        bot.send_message(message.chat.id, 'НЕ ВВОДИТЕ НИКАКИЕ КОМАНДЫ В ПРОЦЕССЕ АВТОРИЗАЦИИ!\nВведите Логин:')
+        bot.register_next_step_handler(message, login_auth)
+    except:
+        pass
+
+
+def login_auth(message):
+    global auth_process
+    global user_input_login
+    if not '/' in message.text:
+        user_input_login = (message.text)
+        bot.delete_message(message.chat.id, message.message_id)
+        bot.delete_message(message.chat.id, message.message_id - 1)
+        bot.send_message(message.chat.id, 'Введите пароль:')
+        bot.register_next_step_handler(message, password_auth)
+    else:
+        bot.send_message(message.chat.id, 'Не используйте символ /')
+        auth_process = False
+
+
+def password_auth(message):
+    global account
+    global auth_process
+    global user_input_password
+    global user_is_admin
+    global information
+    if not '/' in message.text:
+        user_input_password = (message.text)
+        bot.delete_message(message.chat.id, message.message_id)
+        bot.delete_message(message.chat.id, message.message_id - 1)
+    else:
+        bot.send_message(message.chat.id, 'Не используйте символ /')
+        auth_process = False
         return
-    res = []
-    with open('../sql/req.txt', 'r', encoding='utf-8')as file1:
-        for i in file1.readlines():
-            res.append(i)
-    for i in res:
-        bot.send_message(message.chat.id, i)
+    conn = sqlite3.connect('../sql/ober.sql')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users')
+    users = cur.fetchall()
 
+    for i in users:
+        if i[1] == user_input_login:
+            if i[2] == user_input_password:
+                account = i[0]
+                cur.close()
+                conn.close()
+                conn = sqlite3.connect('../sql/adm.sql')
+                cur = conn.cursor()
+                cur.execute('SELECT * FROM admins')
+                users = cur.fetchall()
+                for j in users:
+                    if str(j[1]) == str(i[1]) and str(j[2]) == str(i[2]):
+                        if message.chat.id in admins_list:
+                            bot.send_message(message.chat.id,
+                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+                        else:
+                            admins_list.append(message.chat.id)
+                            bot.send_message(message.chat.id,
+                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
 
-@bot.message_handler(commands=['vip_list'])
-def vip_list(message):
-    if user_is_admin:
-        with open('../sql/vip.txt', 'r', encoding='utf-8')as file:
-            bot.send_message(message.chat.id, f'Список вип пользователей:')
-            for i in file.readlines():
-                bot.send_message(message.chat.id, i.replace('\n', ''))
-
-    else:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-
-@bot.message_handler(commands=['vip_info'])
-def vip_info(message):
-    bot.send_message(message.chat.id, f'<b>Информация о vip</b>{possibilities}', parse_mode='html')
-
-@bot.message_handler(commands=['buy_vip'])
-def buy_vip(message):
-    bot.send_message(message.chat.id, '<b>Автоматическая продажа еще в ращработке. Для покупки vip статуса напишите @Oberrrr</b>\nСтоимость - <u>99р</u>\nВозморжности вип - /vip_info', parse_mode='html')
-
-@bot.message_handler(commands=['rem_vip'])
-def rem_vip(message):
-    if user_is_admin and int(message.chat.id) == 947827934:
-        bot.send_message(message.chat.id, 'Введите id человека, у которого хотите забрать вип:')
-        bot.register_next_step_handler(message, rem_vip_step2)
-    else:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-
-def rem_vip_step2(message):
-    global rem_id
-    rem_id = message.text
-    bot.send_message(message.chat.id, 'Введите причину:')
-    bot.register_next_step_handler(message, rem_vip_step3)
-
-def rem_vip_step3(message):
-    global rem_cause
-    rem_cause = message.text
-    bot.send_message(message.chat.id, 'Введите пароль:')
-    bot.register_next_step_handler(message, rem_vip_step4)
-
-def rem_vip_step4(message, vip_list=[]):
-    bot.delete_message(message.chat.id, message.message_id)
-    bot.delete_message(message.chat.id, message.message_id-1)
-    if message.text == 'qwerty123321':
-        with open('../sql/vip.txt','r')as file1:
-            all_list = file1.readlines()
-            for i in all_list:
-                i = i.replace('\n', '')
-                vip_list.append(i)
-            if len(vip_list) == 0:
-                bot.send_message(message.chat.id, 'Неудачно.')
+                        user_is_admin = True
+                        information = (check_is_admin.check_info_adm(user_is_admin,  message.chat.id, admins_list))
+                        auth_process = False
+                        cur.close()
+                        conn.close()
+                        return
+                cur.close()
+                conn.close()
+                bot.send_message(message.chat.id,
+                                 f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - пользователь\n/leave - выйти с аккаунта')
+                auth_process = False
                 return
-            for j in vip_list:
-                if int(j) == int(rem_id):
-                    vip_list.remove(j)
-                    try:
-                        bot.send_message(rem_id, f'<b>У вас удален vip статус.</b>\nПричина: {rem_cause}',
-                                         parse_mode='html')
-                    except telebot.apihelper.ApiTelegramException:
-                        bot.send_message(message.chat.id, 'У пользователя нет вип.')
-                    finally:
-                        pass
-        with open('../sql/vip.txt', 'w') as file2:
-            for l in vip_list:
-                file2.write(f'{str(l)}\n')
-        bot.send_message(message.chat.id, 'Успешно.')
-    else:
-        bot.send_message(message.chat.id, 'Неудачно.')
-@bot.message_handler(commands=['get_vip'])
-def get_vip(message):
-    if user_is_admin and int(message.chat.id) == 947827934:
-        bot.send_message(message.chat.id, 'Введите id человека, которому хотите выдать вип:')
-        bot.register_next_step_handler(message, get_vip_step2)
-    else:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-def get_vip_step2(message):
-    global new_vip_people
-    new_vip_people = message.text
-    bot.send_message(message.chat.id, 'Введите пароль:')
-    bot.register_next_step_handler(message, get_vip_step3)
+    bot.send_message(message.chat.id, 'Не удачно.')
+    auth_process = False
+    cur.close()
+    conn.close()
 
-def get_vip_step3(message, vip_list = []):
-    if message.text == 'qwerty123321':
-        id = new_vip_people
-        with open('../sql/vip.txt', 'r', encoding='utf-8') as file:
-            read = file.readlines()
-            for i in read:
-                i = i.replace('\n', '')
-                vip_list.append(i)
-        with open('../sql/vip.txt', 'a', encoding='utf-8')as file1:
-            if id not in vip_list:
-                file1.write(f'{id}\n')
-                bot.delete_message(message.chat.id, message.message_id)
-                bot.delete_message(message.chat.id, message.message_id-1)
-                bot.send_message(message.chat.id, 'Успешно.')
-            else:
-                bot.send_message(message.chat.id, 'Пльзователь уже имеет вип статус')
 
+
+#-----------------------/leave----------------------
+def leave(message):
+    check_id(message.chat.id)
+    global account
+    global user_is_admin
+    global information
+    account = None
+    user_is_admin = None
+    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
+    bot.send_message(message.chat.id, 'Выход успешен!')
+
+
+
+#-----------------------/id----------------------
+@bot.message_handler(commands=["id"])
+def id(message):
+    bot.reply_to(message, f'Ваш id : {message.from_user.id}')
+
+
+#-----------------------/status----------------------
+@bot.message_handler(commands=['status'])
+def status(message):
+    if user_is_admin and message.chat.id in admins_list:
+        bot.send_message(message.chat.id, f'Администратор ({message.from_user.id})')
+    else:
+        bot.send_message(message.chat.id, f'Пользователь ({message.from_user.id})')
+
+
+#-----------------------/website----------------------
+@bot.message_handler(commands=["website", "site"])
+def website(message):
+    webbrowser.open("https://ober1.st8.ru/")
+
+
+#-----------------------/photo----------------------
+@bot.message_handler(commands=["photo"])
+def send_photo(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete_last')
+    markup.row(btn1)
+    file = open(f'../img/flower{random.randint(1, 3)}.png', 'rb')
+    bot.send_photo(message.chat.id, file, reply_markup=markup)
+
+
+#-----------------------/audio----------------------
+@bot.message_handler(commands=["audio"])
+def audio(message):
+    file = open('../audio/voice.mp3', 'rb')
+    bot.send_audio(message.chat.id, file)
+
+
+#----------------------content = photo-------------------------------
+@bot.message_handler(content_types=["photo"])
+def get_photo(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete')
+    btn2 = types.InlineKeyboardButton('Убрать кнопки', callback_data='edit')
+    markup.row(btn1, btn2)
+    markup.add()
+    bot.reply_to(message, "Какое красивое фото!", reply_markup=markup)
+
+
+#-----------------------/example----------------------
+@bot.message_handler(commands=['example'])
+def example(message):
+    check_id(message.chat.id)
+    global example_text
+    global example_id
+    bot.send_message(message.chat.id, 'Отправьте ваш пример:')
+    example_text = True
+    example_id = message.message_id
+
+
+
+#-----------------------/weather----------------------
+@bot.message_handler(commands=['weather'])
+def weather(message):
+    check_id(message.chat.id)
+    global weather_get
+    global user_city
+    global weather_get_id
+    conn = sqlite3.connect('../sql/weather.sql')
+    cur = conn.cursor()
+    id1 = message.from_user.id
+    cur.execute('CREATE TABLE IF NOT EXISTS users (id int(15), city varchar(50))')
+    conn.commit()
+    cur.execute('SELECT * FROM users')
+    data = cur.fetchall()
+    res = []
+    for i in data:
+        res.insert(0, i)
+    for i in res:
+        if id1 == i[0]:
+            if i[1] != None:
+                user_city = i[1]
+                weather_get = True
+                weather_get_id = message.message_id
+                res = requests.get(
+                    f"https://api.openweathermap.org/data/2.5/weather?q={user_city}&appid={TOKEN}&units=metric")
+                try:
+                    res = json.loads(res.text)
+                    markup1 = types.InlineKeyboardMarkup()
+                    btn_yes = types.InlineKeyboardButton('Да', callback_data='Yes_izm')
+                    btn_no = types.InlineKeyboardButton('Нет', callback_data='No')
+                    markup1.add(btn_no, btn_yes)
+                    bot.send_message(message.chat.id,
+                                     f'Погода в {user_city}: {round(int(res["main"]["temp"]))}°C, {translator.translate(res["weather"][0]["description"])}\nВетер: {res["wind"]["speed"]}м/с\nВлажность: {res["main"]["humidity"]}% ',
+                                     )
+                    bot.send_message(message.chat.id, 'Изменить город?', reply_markup=markup1)
+                    weather_get = False
+                except:
+                    bot.send_message(message.chat.id,
+                                     'Город указан не верно. Если вы уверенны, что город введен верно - напишите /feedback')
+                    weather_get = False
+                cur.close()
+                conn.close()
+
+                return
+
+    bot.send_message(message.chat.id, 'Введите свой город:')
+    weather_get = True
+    weather_get_id = message.message_id
+
+    cur.close()
+    conn.close()
+
+
+#-----------------------/text_to_audio----------------------
+
+@bot.message_handler(commands=['text_to_audio'])
+def TextToAudio(message):
+    check_id(message.chat.id)
+    bot.send_message(message.chat.id, 'Введите текст для преобразования:')
+    bot.register_next_step_handler(message, TextToAudio_text_input)
+
+
+def TextToAudio_text_input(message):
+    global audio
+    global language
+    global text_for_report
+    text_for_report = message.text
+
+    try:
+        audio = f"../audio_out/audio_for_{message.chat.id}.mp3"
+        if detect(message.text) == 'mk' or detect(message.text) == 'bg':
+            language = 'ru'
+        else:
+            language = detect(message.text)
+    except:
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
+        return
+    try:
+        sp = gTTS(text=message.text, lang=language, slow=False)
+        sp.save(audio)
+        markup = types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton('Распознование не верно', callback_data='Recognition_not_correct')
+        markup.row(btn1)
+        file = open(audio, 'rb')
+        bot.send_audio(message.chat.id, file, title='Ваше сообщение')
+        bot.send_message(message.chat.id, f'Язык сообщения: {language}\nЕсли язык распознан не правильно нажмите на кнопку ниже:', reply_markup=markup)
+        file.close()
+    except:
+        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
+        return
+
+
+
+
+#-----------------------/convert_currency----------------------
 @bot.message_handler(commands=['convert_currency'])
 def convert(message):
     bot.send_message(message.chat.id, '<b>Введите сумму</b>\nДля отмены введите cancel', parse_mode='html')
@@ -202,76 +415,118 @@ def convert_step3(message):
         bot.register_next_step_handler(message,convert_step2)
         return
 
-@bot.message_handler(commands=['Send_Message'])
-def Send_Message(message):
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        return
-    bot.send_message(message.chat.id, 'Введите id адресанта')
 
-    bot.register_next_step_handler(message, Send_Message_step1)
 
-@bot.message_handler(commands=['send_all'])
-def send_all(message):
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        return
-    bot.send_message(message.chat.id, 'Введите сообщение:')
-    bot.register_next_step_handler(message, send_all_step2)
+#-----------------------/feedback----------------------
+@bot.message_handler(commands=['feedback'])
+def feedback(message):
+    markup = types.InlineKeyboardMarkup()
+    btn_feedback = types.InlineKeyboardButton('Связь с разработчиком', callback_data='feedback_logs')
+    markup.add(btn_feedback)
+    bot.send_message(message.chat.id, parse_mode='html',
+                     text='<b>Для связи</b>:\ndiscord - Ober11#7777\ntg - @Oberrrr\nИли вы можете оставить Feedback по кнопке ниже:',
+                     reply_markup=markup)
 
-def send_all_step2(message, success = 0, not_success = 0, success_list=[]):
-    with open('../sql/users.txt', 'r', encoding='utf-8')as file:
-        users_list = file.readlines()
-        for i in users_list:
-            try:
-                bot.send_message(int(i), message.text)
-                success += 1
-                success_list.append(i)
-            except:
-                not_success += 1
-        if not_success > 0:
-            bot.send_message(message.chat.id, f'<b>Рассылка завершена</b>.\nУспешно - {success}\nНеуспешно - {not_success}\n<u>id с неудачной рассылкой удалены из списка</u>', parse_mode='html')
-    with open('../sql/users.txt', 'w', encoding='utf-8')as file4:
-        for j in success_list:
-            file4.write(str(j))
 
-def Send_Message_step1(message):
-    global user_adress
-    user_adress = message.text
-    bot.send_message(message.chat.id, 'Введите сообщение')
-    bot.register_next_step_handler(message, Send_Message_step2)
-def Send_Message_step2(message):
-    global user_adress
-    message_to_user = message.text
-    try:
-        bot.send_message(user_adress, message_to_user)
-    except:
-        pass
-    bot.send_message(message.chat.id, 'Сообщение отправлено')
 
-@bot.message_handler(commands=['text_to_audio'])
-def TextToAudio(message):
-    check_id(message.chat.id)
-    bot.send_message(message.chat.id, 'Введите текст для преобразования:')
-    bot.register_next_step_handler(message, TextToAudio_text_input)
+#-----------------------/vip_info----------------------
+@bot.message_handler(commands=['vip_info'])
+def vip_info(message):
+    bot.send_message(message.chat.id, f'<b>Информация о vip</b>{possibilities}', parse_mode='html')
 
+
+#-----------------------/buy_vip----------------------
+@bot.message_handler(commands=['buy_vip'])
+def buy_vip(message):
+    bot.send_message(message.chat.id, '<b>Автоматическая продажа еще в ращработке. Для покупки vip статуса напишите @Oberrrr</b>\nСтоимость - <u>99р</u>\nВозморжности вип - /vip_info', parse_mode='html')
+
+
+#-----------------------/bot_shop----------------------
+@bot.message_handler(commands=['bot_shop'])
+def bot_shop(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton('Онлайн магазин',
+                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
+    markup.add(types.KeyboardButton('Помощь по командам'))
+    markup.add(types.KeyboardButton('Купить вип статус'))
+    bot.send_message(message.chat.id, 'Привет! У нас вы можете заказать крутого телеграмм бота с различным функционалом!\nЧтобы перейти в магазин используйте кнопку "онлайн магазин"', reply_markup=markup)
+
+@bot.message_handler(content_types=['web_app_data'])
+def web_app(message):
+    res = json.loads(message.web_app_data.data)
+    name = res['name']
+    email = res['email']
+    text = res['text']
+    tg = res['telegram_id']
+    time = res['time']
+    print(name,email,tg,text, time)
+    string = f'{name},{email},{tg},{time},{text}\n'
+    with open('../sql/req.txt', 'a', encoding='utf-8')as file:
+        file.write(string)
+    bot.send_message(message.chat.id, 'Запрос отправлен, с вами свяжется Oberrrr (разработчик)')
+
+
+
+
+
+
+#----------------------------------------------------------FOR ADMIN-------------------------------------------------------
+
+
+
+#-----------------------/users----------------------
+@bot.message_handler(commands=['users'])
+def users(message):
+    conn = sqlite3.connect('../sql/ober.sql')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users')
+    users = cur.fetchall()
+    info = ''
+    for el in users:
+        info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
+    cur.close()
+    conn.close()
+
+    if check_status(message) != False:
+        bot.send_message(message.chat.id, info)
+
+
+
+#-----------------------/weather_users_info----------------------
+@bot.message_handler(commands=['weather_users_info'])
+def users_weather(message):
+    conn = sqlite3.connect('../sql/weather.sql')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users')
+    weather = cur.fetchall()
+    info = ''
+    for i in weather:
+        info += f'id: {i[0]}, Город: {i[1]}\n'
+    cur.close()
+    conn.close()
+
+    if check_status(message) != False:
+        bot.send_message(message.chat.id, info)
+
+
+
+
+#-----------------------/reports----------------------
 @bot.message_handler(commands=['reports'])
 def check_reports(message):
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-        return
-    markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
-    btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
-    markup.row(btn1,btn2)
-    with open('../sql/feedback.txt', 'r', encoding='utf-8')as file:
-        x = file.readlines()
-        new_reports_feedback = len(x)
-    with open('../sql/new_reports.txt', 'r', encoding='utf-8')as file2:
-        y = file2.readlines()
-        new_reports_audio = len(y)
-    bot.send_message(message.chat.id,f'Новых обращений feedback - {new_reports_feedback}\nНовых обращений text to audio - {new_reports_audio}',parse_mode='html')
-    bot.send_message(message.chat.id, '<b>Выберите категорию:</b>',reply_markup=markup, parse_mode='html')
+    if check_status(message) != False:
+        markup = types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton('Feedback', callback_data='feedback_type')
+        btn2 = types.InlineKeyboardButton('Обращение text_to_audio', callback_data='text_to_audio_type')
+        markup.row(btn1,btn2)
+        with open('../sql/feedback.txt', 'r', encoding='utf-8')as file:
+            x = file.readlines()
+            new_reports_feedback = len(x)
+        with open('../sql/new_reports.txt', 'r', encoding='utf-8')as file2:
+            y = file2.readlines()
+            new_reports_audio = len(y)
+        bot.send_message(message.chat.id,f'Новых обращений feedback - {new_reports_feedback}\nНовых обращений text to audio - {new_reports_audio}',parse_mode='html')
+        bot.send_message(message.chat.id, '<b>Выберите категорию:</b>',reply_markup=markup, parse_mode='html')
 
 
 def report_check_feedback(message, user_know=False, user_first=0):
@@ -378,34 +633,7 @@ def report_check_audio(message, vip_count = -1, vip_have = False):
     except:
         bot.send_message(message.chat.id, 'Репортов нет.')
 
-def TextToAudio_text_input(message):
-    global audio
-    global language
-    global text_for_report
-    text_for_report = message.text
 
-    try:
-        audio = f"../audio_out/audio_for_{message.chat.id}.mp3"
-        if detect(message.text) == 'mk' or detect(message.text) == 'bg':
-            language = 'ru'
-        else:
-            language = detect(message.text)
-    except:
-        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
-        return
-    try:
-        sp = gTTS(text=message.text, lang=language, slow=False)
-        sp.save(audio)
-        markup = types.InlineKeyboardMarkup()
-        btn1 = types.InlineKeyboardButton('Распознование не верно', callback_data='Recognition_not_correct')
-        markup.row(btn1)
-        file = open(audio, 'rb')
-        bot.send_audio(message.chat.id, file, title='Ваше сообщение')
-        bot.send_message(message.chat.id, f'Язык сообщения: {language}\nЕсли язык распознан не правильно нажмите на кнопку ниже:', reply_markup=markup)
-        file.close()
-    except:
-        bot.send_message(message.chat.id, 'Язык не поддерживается, или не распознан, повторите попытку!\nЕсли ошибка повторится используйте /feedback')
-        return
 
 
 def bug_report(message, error, chat_id, path):
@@ -428,145 +656,28 @@ def bug_report(message, error, chat_id, path):
     except:
         pass
 
-@bot.message_handler(commands=['leave'])
-def leave(message):
-    check_id(message.chat.id)
-    global account
-    global user_is_admin
-    global information
-    account = None
-    user_is_admin = None
-    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
-    bot.send_message(message.chat.id, 'Выход успешен!')
 
 
+#-----------------------/check_orders----------------------
 
-@bot.message_handler(commands=['weather_users_info'])
-def users(message):
-    conn = sqlite3.connect('../sql/weather.sql')
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM users')
-    weather = cur.fetchall()
-    info = ''
-    for i in weather:
-        info += f'id: {i[0]}, Город: {i[1]}\n'
-    cur.close()
-    conn.close()
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+@bot.message_handler(commands=['check_orders'])
+def check_orders(message):
+    if check_status(message) != False:
+        res = []
+        with open('../sql/req.txt', 'r', encoding='utf-8')as file1:
+            for i in file1.readlines():
+                res.append(i)
+        for i in res:
+            bot.send_message(message.chat.id, i)
 
 
-    else:
-        bot.send_message(message.chat.id, info)
-
-
-
-@bot.message_handler(commands=['users'])
-def users(message):
-    conn = sqlite3.connect('../sql/ober.sql')
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM users')
-    users = cur.fetchall()
-    info = ''
-    for el in users:
-        info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
-    cur.close()
-    conn.close()
-    if not user_is_admin or not message.chat.id in admins_list:
-        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
-
-
-    else:
-        bot.send_message(message.chat.id, info)
-
-
-
-@bot.message_handler(commands=['reg'])
-def reg_user(message):
-    check_id(message.chat.id)
-    global id
-    conn = sqlite3.connect('../sql/ober.sql')
-    cur = conn.cursor()
-    id = message.from_user.id
-    cur.execute('CREATE TABLE IF NOT EXISTS users (id int(50), login varchar(50), pass varchar(50))')
-    conn.commit()
-    cur.close()
-    conn.close()
-    bot.send_message(message.chat.id, 'привет, сейчас тебя зарегистрируем, придумайте логин')
-    bot.register_next_step_handler(message, user_login)
-
-
-@bot.message_handler(commands=['weather'])
-def weather(message):
-    check_id(message.chat.id)
-    global weather_get
-    global user_city
-    global weather_get_id
-    conn = sqlite3.connect('../sql/weather.sql')
-    cur = conn.cursor()
-    id1 = message.from_user.id
-    cur.execute('CREATE TABLE IF NOT EXISTS users (id int(15), city varchar(50))')
-    conn.commit()
-    cur.execute('SELECT * FROM users')
-    data = cur.fetchall()
-    res = []
-    for i in data:
-        res.insert(0, i)
-    for i in res:
-        if id1 == i[0]:
-            if i[1] != None:
-                user_city = i[1]
-                weather_get = True
-                weather_get_id = message.message_id
-                res = requests.get(
-                    f"https://api.openweathermap.org/data/2.5/weather?q={user_city}&appid={TOKEN}&units=metric")
-                try:
-                    res = json.loads(res.text)
-                    markup1 = types.InlineKeyboardMarkup()
-                    btn_yes = types.InlineKeyboardButton('Да', callback_data='Yes_izm')
-                    btn_no = types.InlineKeyboardButton('Нет', callback_data='No')
-                    markup1.add(btn_no, btn_yes)
-                    bot.send_message(message.chat.id,
-                                     f'Погода в {user_city}: {round(int(res["main"]["temp"]))}°C, {translator.translate(res["weather"][0]["description"])}\nВетер: {res["wind"]["speed"]}м/с\nВлажность: {res["main"]["humidity"]}% ',
-                                     )
-                    bot.send_message(message.chat.id, 'Изменить город?', reply_markup=markup1)
-                    weather_get = False
-                except:
-                    bot.send_message(message.chat.id,
-                                     'Город указан не верно. Если вы уверенны, что город введен верно - напишите /feedback')
-                    weather_get = False
-                cur.close()
-                conn.close()
-
-                return
-
-    bot.send_message(message.chat.id, 'Введите свой город:')
-    weather_get = True
-    weather_get_id = message.message_id
-
-    cur.close()
-    conn.close()
-
-
-@bot.message_handler(commands=['auth'])
-def auth_user(message):
-    check_id(message.chat.id)
-    global auth_process
-    auth_process = True
-    try:
-        bot.send_message(message.chat.id, 'НЕ ВВОДИТЕ НИКАКИЕ КОМАНДЫ В ПРОЦЕССЕ АВТОРИЗАЦИИ!\nВведите Логин:')
-        bot.register_next_step_handler(message, login_auth)
-    except:
-        pass
-
-
+#-----------------------/deleteMSG----------------------
 @bot.message_handler(commands=['DeleteMsg'])
 def delete_msg(message):
-    if user_is_admin and message.chat.id in admins_list:
+    if check_status(message) != False:
         bot.send_message(message.chat.id, 'Кол-во сообщений:')
         bot.register_next_step_handler(message, delete_colvo_message)
-        return
-    bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+
 
 
 def delete_colvo_message(message):
@@ -591,151 +702,175 @@ def delete_colvo_message(message):
             bot.delete_message(message.chat.id, message.message_id - 2)
 
 
-def login_auth(message):
-    global auth_process
-    global user_input_login
-    if not '/' in message.text:
-        user_input_login = (message.text)
-        bot.delete_message(message.chat.id, message.message_id)
-        bot.delete_message(message.chat.id, message.message_id - 1)
-        bot.send_message(message.chat.id, 'Введите пароль:')
-        bot.register_next_step_handler(message, password_auth)
+
+
+#-----------------------/Send_Message----------------------
+
+@bot.message_handler(commands=['Send_Message'])
+def Send_Message(message):
+    if check_status(message) != False:
+        bot.send_message(message.chat.id, 'Введите id адресанта')
+        bot.register_next_step_handler(message, Send_Message_step1)
+
+def Send_Message_step1(message):
+    global user_adress
+    user_adress = message.text
+    bot.send_message(message.chat.id, 'Введите сообщение')
+    bot.register_next_step_handler(message, Send_Message_step2)
+
+def Send_Message_step2(message):
+    global user_adress
+    message_to_user = message.text
+    try:
+        bot.send_message(user_adress, message_to_user)
+    except:
+        pass
+    bot.send_message(message.chat.id, 'Сообщение отправлено')
+
+
+#-----------------------/send_all----------------------
+@bot.message_handler(commands=['send_all'])
+def send_all(message):
+    if check_status(message) != False:
+        bot.send_message(message.chat.id, 'Введите сообщение:')
+        bot.register_next_step_handler(message, send_all_step2)
+
+def send_all_step2(message, success = 0, not_success = 0, success_list=[]):
+    with open('../sql/users.txt', 'r', encoding='utf-8')as file:
+        users_list = file.readlines()
+        for i in users_list:
+            try:
+                bot.send_message(int(i), message.text)
+                success += 1
+                success_list.append(i)
+            except:
+                not_success += 1
+        if not_success > 0:
+            bot.send_message(message.chat.id, f'<b>Рассылка завершена</b>.\nУспешно - {success}\nНеуспешно - {not_success}\n<u>id с неудачной рассылкой удалены из списка</u>', parse_mode='html')
+    with open('../sql/users.txt', 'w', encoding='utf-8')as file4:
+        for j in success_list:
+            file4.write(str(j))
+
+
+#-----------------------/get_vip----------------------
+@bot.message_handler(commands=['get_vip'])
+def get_vip(message):
+    if user_is_admin and int(message.chat.id) == 947827934:
+        bot.send_message(message.chat.id, 'Введите id человека, которому хотите выдать вип:')
+        bot.register_next_step_handler(message, get_vip_step2)
     else:
-        bot.send_message(message.chat.id, 'Не используйте символ /')
-        auth_process = False
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
+def get_vip_step2(message):
+    global new_vip_people
+    new_vip_people = message.text
+    bot.send_message(message.chat.id, 'Введите пароль:')
+    bot.register_next_step_handler(message, get_vip_step3)
+
+def get_vip_step3(message, vip_list = []):
+    if message.text == 'qwerty123321':
+        id = new_vip_people
+        with open('../sql/vip.txt', 'r', encoding='utf-8') as file:
+            read = file.readlines()
+            for i in read:
+                i = i.replace('\n', '')
+                vip_list.append(i)
+        with open('../sql/vip.txt', 'a', encoding='utf-8')as file1:
+            if id not in vip_list:
+                file1.write(f'{id}\n')
+                bot.delete_message(message.chat.id, message.message_id)
+                bot.delete_message(message.chat.id, message.message_id-1)
+                bot.send_message(message.chat.id, 'Успешно.')
+            else:
+                bot.send_message(message.chat.id, 'Пльзователь уже имеет вип статус')
 
 
-def password_auth(message):
-    global account
-    global auth_process
-    global user_input_password
-    global user_is_admin
-    global information
-    if not '/' in message.text:
-        user_input_password = (message.text)
-        bot.delete_message(message.chat.id, message.message_id)
-        bot.delete_message(message.chat.id, message.message_id - 1)
+#-----------------------/rem_vip----------------------
+@bot.message_handler(commands=['rem_vip'])
+def rem_vip(message):
+    if user_is_admin and int(message.chat.id) == 947827934:
+        bot.send_message(message.chat.id, 'Введите id человека, у которого хотите забрать вип:')
+        bot.register_next_step_handler(message, rem_vip_step2)
     else:
-        bot.send_message(message.chat.id, 'Не используйте символ /')
-        auth_process = False
-        return
-    conn = sqlite3.connect('../sql/ober.sql')
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM users')
-    users = cur.fetchall()
+        bot.send_message(message.chat.id, 'У вас недостаточно прав!')
 
-    for i in users:
-        if i[1] == user_input_login:
-            if i[2] == user_input_password:
-                account = i[0]
-                cur.close()
-                conn.close()
-                conn = sqlite3.connect('../sql/adm.sql')
-                cur = conn.cursor()
-                cur.execute('SELECT * FROM admins')
-                users = cur.fetchall()
-                for j in users:
-                    if str(j[1]) == str(i[1]) and str(j[2]) == str(i[2]):
-                        if message.chat.id in admins_list:
-                            bot.send_message(message.chat.id,
-                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
-                        else:
-                            admins_list.append(message.chat.id)
-                            bot.send_message(message.chat.id,
-                                             f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - администратор\n /leave - выйти с аккаунта')
+def rem_vip_step2(message):
+    global rem_id
+    rem_id = message.text
+    bot.send_message(message.chat.id, 'Введите причину:')
+    bot.register_next_step_handler(message, rem_vip_step3)
 
-                        user_is_admin = True
-                        information = (check_is_admin.check_info_adm(user_is_admin,  message.chat.id, admins_list))
-                        auth_process = False
-                        cur.close()
-                        conn.close()
-                        return
-                cur.close()
-                conn.close()
-                bot.send_message(message.chat.id,
-                                 f'Добро пожаловать, {i[1]} (id:{message.from_user.id}) Статус - пользователь\n/leave - выйти с аккаунта')
-                auth_process = False
+def rem_vip_step3(message):
+    global rem_cause
+    rem_cause = message.text
+    bot.send_message(message.chat.id, 'Введите пароль:')
+    bot.register_next_step_handler(message, rem_vip_step4)
+
+def rem_vip_step4(message, vip_list=[]):
+    bot.delete_message(message.chat.id, message.message_id)
+    bot.delete_message(message.chat.id, message.message_id-1)
+    if message.text == 'qwerty123321':
+        with open('../sql/vip.txt','r')as file1:
+            all_list = file1.readlines()
+            for i in all_list:
+                i = i.replace('\n', '')
+                vip_list.append(i)
+            if len(vip_list) == 0:
+                bot.send_message(message.chat.id, 'Неудачно.')
                 return
-    bot.send_message(message.chat.id, 'Не удачно.')
-    auth_process = False
-    cur.close()
-    conn.close()
-
-
-
-
-def user_login(message):
-    global users_list
-    global login
-    conn = sqlite3.connect('../sql/ober.sql')
-    cur = conn.cursor()
-    cur.execute('SELECT login FROM users')
-    users1 = cur.fetchall()
-    for i in users1:
-        users_list.append(i)
-    cur.close()
-    conn.close()
-    if not '/' in message.text.strip():
-        if not message.text.strip() in str(users_list):
-            login = message.text.strip()
-
-            bot.send_message(message.chat.id, 'введите пароль')
-            bot.register_next_step_handler(message, user_pass)
-        else:
-            bot.send_message(message.chat.id, "Придумайте другой login:")
-            bot.register_next_step_handler(message, user_login)
-            return
+            for j in vip_list:
+                if int(j) == int(rem_id):
+                    vip_list.remove(j)
+                    try:
+                        bot.send_message(rem_id, f'<b>У вас удален vip статус.</b>\nПричина: {rem_cause}',
+                                         parse_mode='html')
+                    except telebot.apihelper.ApiTelegramException:
+                        bot.send_message(message.chat.id, 'У пользователя нет вип.')
+                    finally:
+                        pass
+        with open('../sql/vip.txt', 'w') as file2:
+            for l in vip_list:
+                file2.write(f'{str(l)}\n')
+        bot.send_message(message.chat.id, 'Успешно.')
     else:
-        bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
+        bot.send_message(message.chat.id, 'Неудачно.')
+
+
+#-----------------------/vip_list----------------------
+@bot.message_handler(commands=['vip_list'])
+def vip_list(message):
+    if check_status(message) != False:
+        with open('../sql/vip.txt', 'r', encoding='utf-8')as file:
+            bot.send_message(message.chat.id, f'Список вип пользователей:')
+            for i in file.readlines():
+                bot.send_message(message.chat.id, i.replace('\n', ''))
 
 
 
-def user_pass(message):
-    if not '/' in message.text.strip():
-        password = message.text.strip()
-        conn = sqlite3.connect('../sql/ober.sql')
+
+
+#----------------------------------------------------------Вспомогательные-------------------------------------------------------
+
+
+def edit_city(message):
+    res = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={message.text}&appid={TOKEN}&units=metric")
+    if res.status_code == 200:
+        conn = sqlite3.connect('../sql/weather.sql')
         cur = conn.cursor()
-        cur.execute(f'INSERT INTO users (id, login, pass) VALUES ("%s", "%s","%s")' % (id, login, password))
+        id1 = message.chat.id
+        cur.execute(f'INSERT INTO users (id, city) VALUES ("%s", "%s")' % (id1, message.text))
         conn.commit()
         cur.close()
         conn.close()
-
-        marcup = types.InlineKeyboardMarkup()
-        marcup.add(telebot.types.InlineKeyboardButton('Список пользователей', callback_data='users'))
-        bot.send_message(message.chat.id, 'Вы зарегистрированны!\nИспользуйте /auth для входа в учетную запись',
-                         reply_markup=marcup)
-
+        bot.send_message(message.chat.id, 'Успешно!')
     else:
-        bot.send_message(message.chat.id, 'У вас не должно быть / в логине')
+        bot.send_message(message.chat.id, 'Не правильный город')
 
+#Проверка на админ статус
+def check_status(message):
+    if not user_is_admin or not message.chat.id in admins_list:
+        bot.send_message(message.chat.id, 'Недостаточно прав')
+        return False
 
-
-@bot.message_handler(commands=['feedback'])
-def feedback(message):
-    markup = types.InlineKeyboardMarkup()
-    btn_feedback = types.InlineKeyboardButton('Связь с разработчиком', callback_data='feedback_logs')
-    markup.add(btn_feedback)
-    bot.send_message(message.chat.id, parse_mode='html',
-                     text='<b>Для связи</b>:\ndiscord - Ober11#7777\ntg - @Oberrrr\nИли вы можете оставить Feedback по кнопке ниже:',
-                     reply_markup=markup)
-
-
-
-@bot.message_handler(commands=['example'])
-def example(message):
-    check_id(message.chat.id)
-    global example_text
-    global example_id
-    bot.send_message(message.chat.id, 'Отправьте ваш пример:')
-    example_text = True
-    example_id = message.message_id
-
-
-
-@bot.message_handler(commands=["audio"])
-def audio(message):
-    file = open('../audio/voice.mp3', 'rb')
-    bot.send_audio(message.chat.id, file)
 
 def check_id(id):
     y = []
@@ -745,69 +880,6 @@ def check_id(id):
             y.append(str(i.replace('\n', '')))
         if str(id) not in y:
             file.write(f'{id}\n')
-
-
-@bot.message_handler(commands=["start"])
-def main(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton('Онлайн магазин',
-                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
-    markup.add(types.KeyboardButton('Помощь по командам'))
-    check_id(message.chat.id)
-    bot.send_message(message.chat.id,
-                     f"Привет {message.from_user.first_name} {message.from_user.username}!\nЯ бот помощник, напиши /help\n<b>У нас можно преобрести качественного tg-бота /bot_shop</b>", parse_mode='html', reply_markup=markup)
-
-
-
-@bot.message_handler(commands=["help"])
-def help1(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton('Онлайн магазин',
-                                    web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
-    markup.add(types.KeyboardButton('Помощь по командам'))
-    check_id(message.chat.id)
-    information = (check_is_admin.check_info_adm(user_is_admin, message.chat.id, admins_list))
-
-    bot.send_message(message.chat.id, information, parse_mode='html', reply_markup=markup)
-
-
-
-@bot.message_handler(commands=["photo"])
-def send_photo(message):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete_last')
-    markup.row(btn1)
-    file = open(f'../img/flower{random.randint(1, 3)}.png', 'rb')
-    bot.send_photo(message.chat.id, file, reply_markup=markup)
-
-
-
-@bot.message_handler(commands=["id"])
-def id(message):
-    bot.reply_to(message, f'Ваш id : {message.from_user.id}')
-
-
-
-@bot.message_handler(commands=["website", "site"])
-def website(message):
-    webbrowser.open("https://ober1.st8.ru/")
-
-@bot.message_handler(commands=['status'])
-def status(message):
-    if user_is_admin and message.chat.id in admins_list:
-        bot.send_message(message.chat.id, f'Администратор ({message.from_user.id})')
-    else:
-        bot.send_message(message.chat.id, f'Пользователь ({message.from_user.id})')
-
-
-@bot.message_handler(content_types=["photo"])
-def get_photo(message):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton('Удалить фото', callback_data='delete')
-    btn2 = types.InlineKeyboardButton('Убрать кнопки', callback_data='edit')
-    markup.row(btn1, btn2)
-    markup.add()
-    bot.reply_to(message, "Какое красивое фото!", reply_markup=markup)
 
 
 
@@ -844,6 +916,9 @@ def info(message):
     elif message.text == "Помощь по командам":
         help1(message)
 
+    elif message.text == "Купить вип статус":
+        buy_vip(message)
+
     else:
         if feedback_enable == True and feedback_id + 2 == message.id:
             with open('../sql/vip.txt', 'r', encoding='utf-8')as file5:
@@ -877,6 +952,11 @@ def info(message):
 
 
 
+
+
+
+
+#-----------------------------------------------------callback_query_handler-------------------------------------------------------
 @bot.callback_query_handler(func=lambda callback: True)
 def callback(callback):
     global example_text
@@ -954,6 +1034,9 @@ def callback(callback):
     elif callback.data == 'text_to_audio_type':
         report_check_audio(callback.message)
 
+    elif callback.data == 'users':
+        users(callback.message)
+
     if callback.data == "repeat_convert":
         try:
             bot.send_message(callback.message.chat.id, '<b>Введите сумму</b>\nДля отмены введите cancel',
@@ -994,20 +1077,6 @@ def callback(callback):
             bot.register_next_step_handler(callback.message, convert_step2)
             return
 
-def edit_city(message):
-    res = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={message.text}&appid={TOKEN}&units=metric")
-    if res.status_code == 200:
-        conn = sqlite3.connect('../sql/weather.sql')
-        cur = conn.cursor()
-        id1 = message.chat.id
-        cur.execute(f'INSERT INTO users (id, city) VALUES ("%s", "%s")' % (id1, message.text))
-        conn.commit()
-        cur.close()
-        conn.close()
-        bot.send_message(message.chat.id, 'Успешно!')
-    else:
-        bot.send_message(message.chat.id, 'Не правильный город')
-
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -1021,10 +1090,11 @@ def callback2(call):
         info += f'id: {el[0]}, Имя: {el[1]}, пароль: {el[2]}\n'
     cur.close()
     conn.close()
-    if not user_is_admin or not call.message.chat.id in admins_list:
-        bot.send_message(call.message.chat.id, 'У вас недостаточно прав!')
-    else:
+    if check_status(callback.message) != False:
         bot.send_message(call.message.chat.id, info)
+
+
+
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
