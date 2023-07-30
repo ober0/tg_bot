@@ -17,7 +17,7 @@ from telebot import types
 
 currency = CurrencyConverter()
 translator = Translator(to_lang="Russian")
-bot = telebot.TeleBot("6184823844:AAE7JvBRB4shgFkLd2353I9ihWf4Ggtkr74")
+bot = telebot.TeleBot("6672631776:AAE106weqS1G9PK7V8uaVhO5UxsONNZ6AAA")
 
 
 
@@ -206,6 +206,7 @@ def password_auth(message):
 
 
 #-----------------------/leave----------------------
+@bot.message_handler(commands=['leave'])
 def leave(message):
     check_id(message.chat.id)
     global account
@@ -457,17 +458,47 @@ def bot_shop(message):
 
 @bot.message_handler(content_types=['web_app_data'])
 def web_app(message):
-    res = json.loads(message.web_app_data.data)
-    name = res['name']
-    email = res['email']
-    text = res['text']
-    tg = res['telegram_id']
-    time = res['time']
-    print(name,email,tg,text, time)
-    string = f'{name},{email},{tg},{time},{text}\n'
-    with open('../sql/req.txt', 'a', encoding='utf-8')as file:
-        file.write(string)
-    bot.send_message(message.chat.id, 'Запрос отправлен, с вами свяжется Oberrrr (разработчик)')
+    try:
+        res = json.loads(message.web_app_data.data)
+        name = str(res['name'])
+        text = str(res['text'])
+        email = str(res['email'])
+        tg = str(res['telegram_id'])
+        time = int(res['time'])
+
+        with open('../sql/vip.txt') as file:
+            read = file.readlines()
+            res = []
+            vip1 = 1
+            for i in read:
+                res.append(int(i.replace('\n', '')))
+            if message.from_user.id in res:
+                vip1 = 0
+
+            db = sqlite3.connect('../sql/orders.sql')
+            cursor = db.cursor()
+            cursor.execute("""CREATE TABLE IF NOT EXISTS orders(
+                vip integer,
+                name text,
+                email text,
+                text_full nvarchar,
+                tg text,
+                srok integer,
+                status text    
+            )
+            """)
+            text1 = str(text)
+            email = str(email)
+
+            print(text)
+            cursor.execute(f"INSERT INTO orders VALUES ({vip1}, '{name}', '{email}', '{text1}', '{tg}', {time}, 'Открыт')")
+            db.commit()
+            db.close()
+        bot.send_message(947827934, "<b>Получен новый заказ</b>\n/check_orders", parse_mode='html')
+        bot.send_message(message.chat.id, 'Запрос отправлен, с вами свяжется Oberrrr (разработчик)')
+
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка')
 
 
 
@@ -476,7 +507,168 @@ def web_app(message):
 
 #----------------------------------------------------------FOR ADMIN-------------------------------------------------------
 
+# -----------------------/check_orders----------------------
 
+@bot.message_handler(commands=['check_orders'])
+def check_orders(message):
+    if check_status(message) != False:
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn1 = types.InlineKeyboardButton("Открытые", callback_data='open_orders')
+        btn2 = types.InlineKeyboardButton("Закрытые", callback_data='close_orders')
+        btn3 = types.InlineKeyboardButton("В работе", callback_data='in_work_orders')
+        markup.add(btn1, btn2, btn3)
+        bot.send_message(message.chat.id, 'Выберите статус заказов которые хотите посмотреть:', reply_markup=markup)
+
+
+def open_orders(message):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+
+        cursor.execute("SELECT rowid, * FROM orders WHERE status = 'Открыт' ORDER BY vip, srok")
+
+        text = cursor.fetchone()
+
+        if int(text[1]) == 0:
+            user_vip = True
+        else:
+            user_vip = False
+
+
+        viv = f'''
+Номер обращения: {text[0]}
+vip: {user_vip}
+Имя: {text[2]}
+email: {text[3]}
+Описание: {text[4]}
+Телеграм: {text[5]}
+Срок заказа: {text[6]} дней
+Статус: {text[7]}'''
+
+        bot.send_message(message.chat.id, f'{viv}\n')
+
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn1 = types.InlineKeyboardButton(text="В работе", callback_data='1')
+        btn2 = types.InlineKeyboardButton(text="Закрыть", callback_data='2')
+        btn3 = types.InlineKeyboardButton(text="Удалить", callback_data='3')
+        markup.add(btn1, btn2, btn3)
+
+        bot.send_message(message.chat.id, "Действие:", reply_markup=markup)
+        db.close()
+
+    except:
+        bot.send_message(message.chat.id, 'Нет открытых обращений')
+
+
+def close_orders(message, ok = False):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+
+        cursor.execute("SELECT rowid, * FROM orders WHERE status = 'Закрыт' ORDER BY vip, srok")
+
+        for i in cursor.fetchall():
+            if i[1] == 0:
+                user_vip = True
+            else:
+                user_vip = False
+
+            viv = f'''
+Номер обращения: {i[0]}
+vip: {user_vip}
+Имя: {i[2]}
+email: {i[3]}
+Описание: {i[4]}
+Телеграм: {i[5]}
+Срок заказа: {i[6]} дней
+Статус: {i[7]}'''
+
+            bot.send_message(message.chat.id, f'{viv}\n')
+            ok = True
+
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            btn2 = types.InlineKeyboardButton(text="В работе", callback_data='1')
+            btn3 = types.InlineKeyboardButton(text="Удалить", callback_data='3')
+            markup.add(btn2, btn3)
+
+            bot.send_message(message.chat.id, "Действие:", reply_markup=markup)
+            db.close()
+        if not ok:
+            bot.send_message(message.chat.id, 'Нет закрытых обращений')
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка')
+
+
+
+def in_work_orders(message, ok = False):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+
+        cursor.execute("SELECT rowid, * FROM orders WHERE status = 'В работе' ORDER BY vip, srok")
+
+        for i in cursor.fetchall():
+            if i[1] == 0:
+                user_vip = True
+            else:
+                user_vip = False
+
+            viv = f'''
+Номер обращения: {i[0]}
+vip: {user_vip}
+Имя: {i[2]}
+email: {i[3]}
+Описание: {i[4]}
+Телеграм: {i[5]}
+Срок заказа: {i[6]} дней
+Статус: {i[7]}'''
+
+            bot.send_message(message.chat.id, f'{viv}\n')
+            ok = True
+
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            btn2 = types.InlineKeyboardButton(text="Закрыть", callback_data='2')
+            btn3 = types.InlineKeyboardButton(text="Удалить", callback_data='3')
+            markup.add(btn2, btn3)
+
+            bot.send_message(message.chat.id, "Действие:", reply_markup=markup)
+            db.close()
+        if not ok:
+            bot.send_message(message.chat.id, 'Нет обращений в работе')
+
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка')
+
+def call1(message):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+        cursor.execute(f"UPDATE orders SET status = 'В работе' WHERE rowid = {message.text}")
+        db.commit()
+        db.close()
+        bot.send_message(message.chat.id, "Успешно")
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка СУБД')
+def call2(message):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+        cursor.execute(f"UPDATE orders SET status = 'Закрыт' WHERE rowid = {message.text}")
+        db.commit()
+        db.close()
+        bot.send_message(message.chat.id, "Успешно")
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка СУБД')
+def call3(message):
+    try:
+        db = sqlite3.connect("../sql/orders.sql")
+        cursor = db.cursor()
+        cursor.execute(f"DELETE FROM orders WHERE rowid = {message.text}")
+        db.commit()
+        db.close()
+        bot.send_message(message.chat.id, "Успешно")
+    except:
+        bot.send_message(message.chat.id, 'Произошла ошибка СУБД')
 
 #-----------------------/users----------------------
 @bot.message_handler(commands=['users'])
@@ -660,20 +852,6 @@ def bug_report(message, error, chat_id, path):
         pass
 
 
-
-#-----------------------/check_orders----------------------
-
-@bot.message_handler(commands=['check_orders'])
-def check_orders(message):
-    if check_status(message) != False:
-        res = []
-        with open('../sql/req.txt', 'r', encoding='utf-8')as file1:
-            for i in file1.readlines():
-                res.append(i)
-        for i in res:
-            bot.send_message(message.chat.id, i)
-
-
 #-----------------------/deleteMSG----------------------
 @bot.message_handler(commands=['DeleteMsg'])
 def delete_msg(message):
@@ -707,9 +885,9 @@ def delete_colvo_message(message):
 
 
 
-#-----------------------/Send_Message----------------------
+#-----------------------/send_message----------------------
 
-@bot.message_handler(commands=['Send_Message'])
+@bot.message_handler(commands=['send_message'])
 def Send_Message(message):
     if check_status(message) != False:
         bot.send_message(message.chat.id, 'Введите id адресанта')
@@ -971,6 +1149,27 @@ def callback(callback):
         bot.delete_message(callback.message.chat.id, callback.message.message_id - 1)
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         bot.send_message(callback.message.chat.id, "Фото удалено!")
+
+    elif callback.data == 'open_orders':
+        open_orders(callback.message)
+
+    elif callback.data == 'close_orders':
+        close_orders(callback.message)
+
+    elif callback.data == 'in_work_orders':
+        in_work_orders(callback.message)
+
+    elif callback.data == '1':
+        bot.send_message(callback.message.chat.id, "Номер обращения:")
+        bot.register_next_step_handler(callback.message, call1)
+
+    elif callback.data == '2':
+        bot.send_message(callback.message.chat.id, "Номер обращения:")
+        bot.register_next_step_handler(callback.message, call2)
+
+    elif callback.data == '3':
+        bot.send_message(callback.message.chat.id, "Номер обращения:")
+        bot.register_next_step_handler(callback.message, call3)
 
 
     elif callback.data == 'edit':
