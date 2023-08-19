@@ -31,6 +31,7 @@ def main(message):
     markup.add(types.KeyboardButton('Онлайн магазин',
                                     web_app=types.WebAppInfo(url='https://ober1.st8.ru/tg/new/telegram.html')))
     markup.add(types.KeyboardButton('Помощь по командам'), types.KeyboardButton('Купить вип статус'))
+
     check_id(message.chat.id)
     bot.send_message(message.chat.id,
 f'''
@@ -38,7 +39,7 @@ f'''
 Я бот помощник, напиши /help
 <b>У нас можно преобрести качественного tg-бота /bot_shop</b>
 ''', parse_mode='html', reply_markup=markup)
-
+    bot.send_message(message.chat.id, 'https://t.me/FoodOberBot - Бот который поможет питаться правильно!')
 
 
 #-----------------------/help----------------------
