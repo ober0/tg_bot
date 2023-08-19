@@ -1,6 +1,6 @@
 import random
 import telebot
-import webbrowser
+# import webbrowser
 import sqlite3
 import requests
 import json
@@ -235,9 +235,9 @@ def status(message):
 
 
 #-----------------------/website----------------------
-@bot.message_handler(commands=["website", "site"])
-def website(message):
-    webbrowser.open("https://ober1.st8.ru/")
+# @bot.message_handler(commands=["website", "site"])
+# def website(message):
+#     webbrowser.open("https://ober1.st8.ru/")
 
 
 #-----------------------/photo----------------------
